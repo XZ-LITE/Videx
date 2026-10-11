@@ -212,7 +212,7 @@ object AnalysisManager {
         _isAnalyzing.value = false
     }
 
-    private fun parseMetadataFromJson(jsonStr: String): VideoMetadata? {
+    fun parseMetadataFromJson(jsonStr: String): VideoMetadata? {
         return try {
             val json = JSONObject(jsonStr)
             val title = json.optString("title", "Медиа")
