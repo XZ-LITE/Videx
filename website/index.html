@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Videx — Инструмент для работы с медиа</title>
+  <meta name="description" content="Videx — мощное Android-приложение для скачивания 4K видео, аудио и фото-каруселей. Транзит в Telegram, FFmpeg, 0% рекламы.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z'/></svg>">
+</head>
+<body>
+
+  <!-- Навигация -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <svg class="brand-logo" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        Videx
+      </a>
+
+      <div class="nav-links desktop-only">
+        <a href="#autopilot">Транзит</a>
+        <a href="#features">Функционал</a>
+        <a href="#platforms">Платформы</a>
+        <a href="#faq">FAQ</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="https://github.com/XZ-LITE/Videx" target="_blank" class="nav-icon-link desktop-only" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <a href="https://t.me/videx_app" target="_blank" class="nav-icon-link desktop-only" aria-label="Telegram">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.98 1.25-5.58 3.68-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.29-.48.79-.74 3.08-1.34 5.14-2.23 6.16-2.66 2.93-1.21 3.54-1.42 3.94-1.43.09 0 .28.02.4.11.1.08.13.19.14.28-.01.07.01.21 0 .31z"/></svg>
+        </a>
+        <button class="menu-toggle mobile-only" id="menu-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Мобильное выезжающее меню -->
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="#autopilot">Транзит</a>
+      <a href="#features">Функционал</a>
+      <a href="#platforms">Платформы</a>
+      <a href="#faq">FAQ</a>
+      <hr>
+      <a href="https://github.com/XZ-LITE/Videx" target="_blank">GitHub</a>
+      <a href="https://t.me/videx_app" target="_blank">Telegram</a>
+    </div>
+  </nav>
+
+  <!-- ГЛАВНЫЙ ЭКРАН (HERO) -->
+  <section class="hero">
+    <div class="hero-bg-glow"></div>
+    <div class="container hero-container">
+
+      <div class="pill-badge fade-up">
+        <span class="pill-dot"></span>
+        Android 15 Ready • Open Source
+      </div>
+
+      <h1 class="hero-title fade-up delay-1">
+        Свобода вашего<br>
+        <span class="text-gradient-flow">медиаконтента.</span>
+      </h1>
+
+      <p class="hero-description fade-up delay-2">
+        Мощный загрузчик для извлечения 4K видео, аудио и фото-каруселей.
+        Универсальный транзит файлов, нативный движок yt-dlp + FFmpeg и полное отсутствие рекламы.
+      </p>
+
+      <div class="hero-buttons fade-up delay-3">
+        <a href="https://github.com/XZ-LITE/Videx/releases/latest" id="btn-download" class="btn btn-primary shimmer-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sm"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span id="apk-btn-text">Скачать Videx APK</span>
+        </a>
+        <a href="https://github.com/XZ-LITE/Videx" target="_blank" class="btn btn-secondary">
+          Исходный код
+        </a>
+      </div>
+
+      <p class="hero-meta fade-up delay-4" id="release-meta">Версия 1.1.4 • Безопасная загрузка с GitHub</p>
+    </div>
+  </section>
+
+  <!-- УНИВЕРСАЛЬНЫЙ ТРАНЗИТ -->
+  <section class="section" id="autopilot">
+    <div class="container">
+      <div class="section-header fade-up">
+        <h2 class="section-title">Универсальный транзит</h2>
+        <p class="section-subtitle">Мгновенная доставка файлов в любые приложения без лишних тапов.</p>
+      </div>
+
+      <div class="feature-showcase fade-up">
+        <div class="showcase-text">
+          <h3>Автопилот для мессенджеров</h3>
+          <p>Поделитесь ссылкой из TikTok или Instagram с Videx. Приложение в фоне скачает файл, сожмет его и само вызовет системное окно отправки. Вам остается лишь выбрать контакт.</p>
+          <ul class="feature-list">
+            <li>
+              <div class="icon-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+              <div class="list-text"><strong>Оптимизация видео:</strong> Конвертация в H.264 (1080p, 720p) для инлайн-воспроизведения прямо в чатах Telegram и WhatsApp.</div>
+            </li>
+            <li>
+              <div class="icon-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+              <div class="list-text"><strong>Сжатие фото:</strong> JPEG-оптимизация каруселей на 70% без потери резкости.</div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Кастомная анимация Share Sheet -->
+        <div class="showcase-visual">
+          <div class="share-sheet-mockup">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Поделиться с помощью</div>
+            <div class="sheet-apps">
+              <div class="app-icon tg"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.98 1.25-5.58 3.68-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.29-.48.79-.74 3.08-1.34 5.14-2.23 6.16-2.66 2.93-1.21 3.54-1.42 3.94-1.43.09 0 .28.02.4.11.1.08.13.19.14.28-.01.07.01.21 0 .31z"/></svg><span>Telegram</span></div>
+              <div class="app-icon wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg><span>WhatsApp</span></div>
+              <div class="app-icon vk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.073 2H8.927C3.333 2 2 3.333 2 8.927v6.146C2 20.667 3.333 22 8.927 22h6.146C20.667 22 22 20.667 22 15.073V8.927C22 3.333 20.667 2 15.073 2zM16.637 14.805c.427.421.841.854 1.229 1.309.206.24.417.474.577.747.243.411-.035 1.096-.516 1.121h-2.102c-.521-.01-.908-.258-1.229-.636-.339-.395-.658-.804-.97-1.221-.144-.19-.296-.374-.476-.532-.236-.206-.499-.214-.689.043-.284.382-.416.82-.416 1.282 0 .445-.19.62-.646.643-1.621.084-3.082-.361-4.329-1.424-1.41-1.2-2.39-2.73-3.232-4.37-.47-1.026-.889-2.076-1.272-3.141-.161-.453.03-.666.523-.675h2.158c.394 0 .668.188.82.553.488 1.328 1.106 2.585 1.944 3.704.225.3.469.585.787.795.228.15.39.096.48-.158.12-.346.166-.708.166-1.074v-2.351c-.04-.545-.303-.846-.827-.954-.251-.052-.206-.184-.064-.325.21-.211.488-.309.8-.309h2.348c.39 0 .564.159.627.53.08.473.056.953.056 1.43v2.859c0 .416.208.536.425.385.195-.136.353-.314.502-.49 1.024-1.203 1.761-2.584 2.339-4.041.139-.352.378-.501.766-.501h2.245c.571 0 .693.228.563.665-.36 1.213-.984 2.302-1.743 3.315-.369.493-.761.968-1.157 1.436-.312.368-.337.61-.027.935z"/></svg><span>VK</span></div>
+            </div>
+            <div class="sheet-button">Показать все</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Полный арсенал функций (Bento Grid) -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header fade-up">
+        <h2 class="section-title">Инженерный подход</h2>
+        <p class="section-subtitle">Функционал, созданный для полного контроля над загрузками.</p>
+      </div>
+
+      <div class="bento-grid">
+
+        <div class="bento-card spotlight-card fade-up">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg>
+          </div>
+          <h4>Ядро и FFmpeg</h4>
+          <p>Python 3.13 (Chaquopy) для алгоритмов yt-dlp. Нативная сборка FFmpeg 6.1.1 для склейки 4K потоков. OTA обновления ядра.</p>
+        </div>
+
+        <div class="bento-card spotlight-card fade-up delay-1">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          </div>
+          <h4>Фоновая очередь</h4>
+          <p>Многопоточность до 3 слотов (WorkManager). Защита батареи WakeLock. Раздельные лимиты скорости для Wi-Fi и 4G.</p>
+        </div>
+
+        <div class="bento-card spotlight-card fade-up delay-2">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </div>
+          <h4>Смарт-детектор</h4>
+          <p>Авто-перехват ссылок из буфера обмена. Обход блокировок (Impersonate) и пропуск спонсорской рекламы (SponsorBlock).</p>
+        </div>
+
+        <div class="bento-card spotlight-card fade-up">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </div>
+          <h4>Встроенный медиацентр</h4>
+          <p>Видеоплеер ExoPlayer с управлением жестами и режимом Картинка-в-Картинке (PiP). Музыкальный плеер с эквалайзером.</p>
+        </div>
+
+        <div class="bento-card spotlight-card fade-up delay-1">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <h4>Хранилище и SD-карты</h4>
+          <p>Поддержка Scoped Storage. Системная защита данных при удалении приложения (<code>hasFragileUserData</code>).</p>
+        </div>
+
+        <div class="bento-card spotlight-card fade-up delay-2">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          </div>
+          <h4>Room и Анти-дубликаты</h4>
+          <p>SQLite база с индексами. Предупреждает о повторных скачиваниях. Сканирует память смартфона для «исцеления» потерянной истории.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Платформы -->
+  <section class="section" id="platforms">
+    <div class="container">
+      <div class="section-header fade-up">
+        <h2 class="section-title">1000+ Платформ</h2>
+        <p class="section-subtitle">Работает практически с любым медиа в интернете.</p>
+      </div>
+
+      <div class="grid-3 fade-up">
+        <div class="minimal-card">
+          <h4>YouTube & Shorts</h4>
+          <p>4K 60fps, плейлисты, каналы и извлечение чистого звука M4A/MP3.</p>
+        </div>
+        <div class="minimal-card">
+          <h4>TikTok</h4>
+          <p>Скачивание без водяных знаков, фото-карусели и аудио.</p>
+        </div>
+        <div class="minimal-card">
+          <h4>Instagram</h4>
+          <p>Reels, публикации, истории и снимки в оригинальном разрешении.</p>
+        </div>
+        <div class="minimal-card">
+          <h4>VK Видео и Клипы</h4>
+          <p>Поддержка видео, клипов и музыкальных треков ВКонтакте.</p>
+        </div>
+        <div class="minimal-card">
+          <h4>Pinterest</h4>
+          <p>Видеопины, GIF-анимации и полноразмерные изображения.</p>
+        </div>
+        <div class="minimal-card">
+          <h4>Другие сервисы</h4>
+          <p>X (Twitter), Reddit, SoundCloud, Vimeo, Rutube и прямые ссылки.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Установка и FAQ -->
+  <section class="section" id="faq">
+    <div class="container grid-2">
+      <!-- Установка -->
+      <div class="install-block fade-up">
+        <h3 class="subsection-title">Установка APK</h3>
+        <div class="step-list">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <strong>Скачайте файл</strong>
+              <span>Нажмите кнопку скачивания и сохраните <code>app-release.apk</code>.</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <strong>Разрешите установку</strong>
+              <span>Дайте браузеру разрешение на установку из неизвестных источников.</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Пользуйтесь</strong>
+              <span>Установите файл. Приложение полностью готово к работе.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="faq-block fade-up delay-1">
+        <h3 class="subsection-title">Частые вопросы</h3>
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-btn">Безопасно ли качать APK с GitHub?</button>
+            <div class="faq-body">
+              Да. Проект с открытым исходным кодом. Система GitHub Actions автоматически собирает релиз и проверяет хеши компонентов, исключая вмешательство извне.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn">Удалятся ли файлы при обновлении?</button>
+            <div class="faq-body">
+              Нет. База данных и ваши настройки защищены системным флагом, а файлы лежат в общих папках смартфона. Все данные сохранятся.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn">Где найти скачанные файлы?</button>
+            <div class="faq-body">
+              Видео сохраняются в папку Movies/Videx, аудио в Music/Videx, фото в Pictures/Videx. Их можно найти в системной Галерее или изменить путь в Настройках.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Футер -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-copy">© 2026 XZ-LITE. Open Source Android Project.</div>
+      <div class="footer-links">
+        <a href="https://t.me/videx_app" target="_blank">Telegram Канал</a>
+        <a href="https://t.me/videx_chat" target="_blank">Чат общения</a>
+        <a href="https://github.com/XZ-LITE/Videx" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
