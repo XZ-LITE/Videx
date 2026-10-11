@@ -120,10 +120,7 @@
 
 ## Установка готового приложения
 
-Вы можете скачать готовый файл **`app-release.apk`** с официального сайта проекта или из раздела GitHub Releases.
-
-🌍 **[Официальный сайт Videx](https://xz-lite.github.io/)** (Рекомендовано)  
-📥 **[Скачать APK на GitHub](https://github.com/XZ-LITE/Videx/releases/latest)**
+Вы можете скачать готовый файл **`app-release.apk`** из официального раздела **[GitHub Releases](https://github.com/XZ-LITE/Videx/releases)**.
 
 ---
 
