@@ -26,7 +26,7 @@ data class AppUpdateInfo(
 
 object AppUpdateChecker {
 
-    private const val GITHUB_OWNER = "xzl1te26-code"
+    private const val GITHUB_OWNER = "XZ-LITE"
     private const val GITHUB_REPO = "Videx"
 
     private var pendingInstallFile: File? = null
