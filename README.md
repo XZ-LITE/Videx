@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/XZ-LITE/Videx/releases/latest"><img src="https://img.shields.io/github/v/release/XZ-LITE/Videx?style=for-the-badge&color=3B82F6&label=Release" alt="Release"></a>
-  <a href="https://developer.android.com/about/versions/15"><img src="https://img.shields.io/badge/Android-15_Ready-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 15"></a>
+  <a href="https://developer.android.com/about/versions/16"><img src="https://img.shields.io/badge/Android-8.0+_--_16-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 16"></a>
   <a href="https://github.com/XZ-LITE/Videx/actions"><img src="https://img.shields.io/github/actions/workflow/status/XZ-LITE/Videx/release.yml?style=for-the-badge&label=CI/CD" alt="Build Status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/XZ-LITE/Videx?style=for-the-badge&color=22C55E" alt="License"></a>
 </p>
