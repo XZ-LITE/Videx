@@ -1,5 +1,5 @@
 name: 🐛 Отчет об ошибке (Bug Report)
-description: Сообщить об ошибке или сбое при скачивании медиафайла
+description: Сообщить об ошибке, баге или сбое в работе приложения Videx
 title: "[BUG]: "
 labels: ["bug"]
 body:
@@ -11,14 +11,14 @@ body:
     attributes:
       label: Описание проблемы
       description: Что именно произошло и при каких действиях?
-      placeholder: Например, при вставке ссылки на TikTok ролик не качается...
+      placeholder: Опишите подробно, с какой ошибкой или багом вы столкнулись...
     validations:
       required: true
   - type: input
     id: media_url
     attributes:
-      label: Проблемная ссылка
-      description: Вставьте ссылку на медиафайл, на которой воспроизводится ошибка
+      label: Проблемная ссылка (если относится к ошибке)
+      description: Укажите ссылку на медиафайл, если баг связан со скачиванием
       placeholder: https://www.youtube.com/watch?v=...
   - type: dropdown
     id: android_version
@@ -42,6 +42,6 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: Логи из приложения (AsyncLogger)
-      description: Вставьте текст из раздела Настройки -> Просмотр технических логов
+      label: Системные логи из приложения
+      description: Скопируйте и вставьте текст из раздела Настройки -> Системные логи
       render: text
