@@ -1,5 +1,12 @@
 # Videx
 
+<p align="center">
+  <a href="https://github.com/XZ-LITE/Videx/releases/latest"><img src="https://img.shields.io/github/v/release/XZ-LITE/Videx?style=for-the-badge&color=3B82F6&label=Release" alt="Release"></a>
+  <a href="https://developer.android.com/about/versions/15"><img src="https://img.shields.io/badge/Android-15_Ready-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 15"></a>
+  <a href="https://github.com/XZ-LITE/Videx/actions"><img src="https://img.shields.io/github/actions/workflow/status/XZ-LITE/Videx/release.yml?style=for-the-badge&label=CI/CD" alt="Build Status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/XZ-LITE/Videx?style=for-the-badge&color=22C55E" alt="License"></a>
+</p>
+
 **Videx** — современное open-source приложение для Android, предназначенное для скачивания видео, аудио и фото-каруселей с более чем 1000+ веб-сервисов. Работает полностью автономно: обработка и анализ ссылок происходят непосредственно на устройстве с помощью CPython 3.13 и `yt-dlp`.
 
 <p align="center">

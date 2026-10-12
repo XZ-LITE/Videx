@@ -1,0 +1,21 @@
+name: 💡 Предложение функции (Feature Request)
+description: Предложить новую идею или улучшение для Videx
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Нам важны ваши идеи по развитию приложения!
+  - type: textarea
+    id: feature_description
+    attributes:
+      label: Описание идеи
+      description: Какую функцию или улучшение вы хотите видеть в Videx?
+      placeholder: Было бы здорово добавить возможность...
+    validations:
+      required: true
+  - type: textarea
+    id: feature_benefit
+    attributes:
+      label: Чем это будет полезно?
+      description: Какую проблему решает это предложение?

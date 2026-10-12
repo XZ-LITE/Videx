@@ -1,0 +1,47 @@
+name: 🐛 Отчет об ошибке (Bug Report)
+description: Сообщить об ошибке или сбое при скачивании медиафайла
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Спасибо за помощь в улучшении Videx! Опишите проблему максимально подробно.
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание проблемы
+      description: Что именно произошло и при каких действиях?
+      placeholder: Например, при вставке ссылки на TikTok ролик не качается...
+    validations:
+      required: true
+  - type: input
+    id: media_url
+    attributes:
+      label: Проблемная ссылка
+      description: Вставьте ссылку на медиафайл, на которой воспроизводится ошибка
+      placeholder: https://www.youtube.com/watch?v=...
+  - type: dropdown
+    id: android_version
+    attributes:
+      label: Версия Android
+      options:
+        - Android 15
+        - Android 14
+        - Android 13
+        - Android 12 / 12L
+        - Android 11
+        - Android 10
+        - Android 8 / 9
+    validations:
+      required: true
+  - type: input
+    id: device_model
+    attributes:
+      label: Модель смартфона
+      placeholder: Например, Samsung Galaxy S23, Xiaomi Redmi Note 12
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи из приложения (AsyncLogger)
+      description: Вставьте текст из раздела Настройки -> Просмотр технических логов
+      render: text
