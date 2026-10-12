@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTiltCards();
   initMagnetic();
   initCursorGlow();
+  initStatCounters();
   fetchLatestGitHubRelease();
 });
 
@@ -22,10 +23,38 @@ function initMobileMenu() {
   const menu = document.getElementById('mobile-menu');
   if (!btn || !menu) return;
 
-  btn.addEventListener('click', () => menu.classList.toggle('open'));
-  menu.querySelectorAll('a').forEach(a =>
-    a.addEventListener('click', () => menu.classList.remove('open'))
-  );
+  const isOpen = () => menu.classList.contains('open');
+
+  const openMenu = () => {
+    btn.classList.add('open');
+    menu.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('menu-open');
+  };
+
+  const closeMenu = () => {
+    btn.classList.remove('open');
+    menu.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('menu-open');
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isOpen() ? closeMenu() : openMenu();
+  });
+
+  menu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => closeMenu());
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen()) closeMenu();
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900 && isOpen()) closeMenu();
+  });
 }
 
 /* ============== SCROLL REVEAL ============== */
@@ -41,7 +70,6 @@ function initScrollReveal() {
 
   document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
 
-  // Hero — reveal instantly
   requestAnimationFrame(() => {
     document.querySelectorAll('.hero .fade-up').forEach(el => el.classList.add('active'));
   });
@@ -178,6 +206,45 @@ function initCursorGlow() {
     requestAnimationFrame(loop);
   };
   loop();
+}
+
+/* ============== STATS COUNTERS ============== */
+function initStatCounters() {
+  const values = document.querySelectorAll('.stat-value[data-count]');
+  if (!values.length) return;
+
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+  const animate = (el) => {
+    const target = parseInt(el.dataset.count, 10);
+    const suffix = el.dataset.suffix || '';
+    if (target === 0) {
+      el.textContent = '0' + suffix;
+      return;
+    }
+    const duration = 1600;
+    const start = performance.now();
+
+    const step = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const val = Math.floor(easeOut(p) * target);
+      el.textContent = val + suffix;
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = target + suffix;
+    };
+    requestAnimationFrame(step);
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        animate(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.4 });
+
+  values.forEach(v => observer.observe(v));
 }
 
 /* ============== GITHUB RELEASE ============== */
