@@ -334,6 +334,8 @@ def get_video_info(url, cookie_path="", use_impersonate=False, metadata_cache_pa
             'no_color': True,
             'socket_timeout': 10,
             'retries': 2,
+            'lazy_extractors': True,
+            'http_chunk_size': 10485760,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'ios', 'mweb', 'tv'],
@@ -661,8 +663,10 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
             'format_sort': format_sort_rules,
 
             # 🚀 ТУРБО-РЕЖИМ: Многопоточность фрагментов (до 16 соединений на 1 файл)
-            'concurrent_fragment_downloads': max(1, int(threads * 2)),
-            'buffersize': 1024 * 256, # Увеличенный буфер для плавности (256 KB)
+            'concurrent_fragment_downloads': max(2, int(threads * 2)),
+            'http_chunk_size': 10485760, # 10 MB сетевой буфер
+            'buffersize': 1024 * 512, # 512 KB увеличенный буфер для плавности IO
+            'socket_timeout': 15,
 
             'progress_hooks': [progress_hook],
             'quiet': True,

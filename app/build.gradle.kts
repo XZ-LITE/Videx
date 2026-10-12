@@ -86,6 +86,7 @@ chaquopy {
         pip {
             install("yt-dlp")
             install("requests")
+            install("pycryptodomex")
         }
     }
 }

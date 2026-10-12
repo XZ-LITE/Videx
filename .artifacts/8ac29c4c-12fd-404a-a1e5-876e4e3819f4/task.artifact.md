@@ -1,0 +1,3 @@
+- [x] Восстановление Ultra-Premium дизайна в MainScreen.kt
+- [x] Восстановление анимаций в HistoryScreen.kt
+- [x] Оптимизация отклика в MainActivity.kt
