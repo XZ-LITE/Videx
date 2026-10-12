@@ -324,11 +324,16 @@ def get_video_info(url, cookie_path="", use_impersonate=False, metadata_cache_pa
         yt_dlp = YT_DLP_CORE
         UnsupportedError = UNSUPPORTED_ERROR
 
+        # Игнорируем длинные плейлисты-миксы YouTube (&list=RD...), если это обычная ссылка на одиночное видео
+        is_explicit_playlist = "playlist?list=" in url or "/sets/" in url or "/album/" in url
+
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'skip_download': True,
             'extract_flat': 'in_playlist',
+            'noplaylist': not is_explicit_playlist,
+            'geo_bypass': True,
             'cachedir': True,
             'check_formats': None,
             'no_color': True,
@@ -662,11 +667,14 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
             'format': format_str,
             'format_sort': format_sort_rules,
 
-            # 🚀 ТУРБО-РЕЖИМ: Многопоточность фрагментов (до 16 соединений на 1 файл)
+            # 🚀 ТУРБО-РЕЖИМ: Многопоточность фрагментов
             'concurrent_fragment_downloads': max(2, int(threads * 2)),
             'http_chunk_size': 10485760, # 10 MB сетевой буфер
             'buffersize': 1024 * 512, # 512 KB увеличенный буфер для плавности IO
             'socket_timeout': 15,
+            'continuedl': True, # Докачка при обрывах связи
+            'fragment_retries': 10, # Авто-повтор фрагментов при нестабильном 4G
+            'geo_bypass': True,
 
             'progress_hooks': [progress_hook],
             'quiet': True,
