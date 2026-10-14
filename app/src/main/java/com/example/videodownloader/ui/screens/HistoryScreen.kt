@@ -949,10 +949,6 @@ private fun HistoryItemCard(
     val view = LocalView.current
     val density = androidx.compose.ui.platform.LocalDensity.current
 
-    LaunchedEffect(item.pathOrUri) {
-        HistoryManager.checkAndUpdateFileStatus(context, item)
-    }
-
     // 🎨 ПЛАВНАЯ GPU-АНИМАЦИЯ ПОЯВЛЕНИЯ КАРТОЧКИ
     var isAppeared by rememberSaveable(item.id) { mutableStateOf(false) }
     LaunchedEffect(item.id) {

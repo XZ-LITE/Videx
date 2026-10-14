@@ -608,7 +608,8 @@ class DownloadWorker(
 
     private fun getAvailableSpaceForUri(context: Context, uri: Uri): Long {
         return try {
-            val rootId = DocumentsContract.getTreeDocumentId(uri)
+            val docId = DocumentsContract.getTreeDocumentId(uri)
+            val rootId = docId.substringBefore(":")
             val rootUri = DocumentsContract.buildRootUri(uri.authority, rootId)
             
             val cursor = context.contentResolver.query(

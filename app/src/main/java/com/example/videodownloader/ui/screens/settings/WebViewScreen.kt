@@ -87,8 +87,8 @@ fun WebViewScreen(url: String, title: String, onBack: () -> Unit) {
                             javaScriptEnabled = true
                             domStorageEnabled = true
                             databaseEnabled = true
-                            allowFileAccess = true
-                            allowContentAccess = true
+                            allowFileAccess = false
+                            allowContentAccess = false
                             useWideViewPort = true
                             loadWithOverviewMode = true
                             setSupportZoom(true)
@@ -96,7 +96,7 @@ fun WebViewScreen(url: String, title: String, onBack: () -> Unit) {
                             displayZoomControls = false
                             mediaPlaybackRequiresUserGesture = false
                             cacheMode = WebSettings.LOAD_DEFAULT
-                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                             // Desktop Chrome User-Agent для совместимости с Google Auth
                             userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
                         }

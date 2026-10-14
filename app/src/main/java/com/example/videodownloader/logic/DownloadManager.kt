@@ -192,7 +192,6 @@ object DownloadManager {
                     DownloadWorker.KEY_PASSPORT to passportPath
                 )
             )
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         workManager.enqueueUniqueWork(
@@ -252,7 +251,6 @@ object DownloadManager {
                         DownloadWorker.KEY_PASSPORT to passportPath
                     )
                 )
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
 
             workManager.enqueueUniqueWork(

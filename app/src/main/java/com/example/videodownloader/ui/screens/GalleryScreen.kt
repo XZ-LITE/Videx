@@ -128,7 +128,6 @@ fun GalleryScreen(
     DisposableEffect(Unit) {
         onDispose {
             activity?.window?.let { window ->
-                WindowCompat.setDecorFitsSystemWindows(window, true)
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
             }
