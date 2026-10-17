@@ -126,6 +126,7 @@ import java.io.File
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -216,7 +217,6 @@ fun PlayerScreen(
 
     var isPlaying by remember { mutableStateOf(value = true) }
     var showControls by remember { mutableStateOf(value = true) }
-    var playbackPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(value = false) }
     var isGestureInteracting by remember { mutableStateOf(value = false) }
@@ -279,16 +279,7 @@ fun PlayerScreen(
         }
     }
 
-    // Обновление позиции воспроизведения
-    LaunchedEffect(exoPlayer) {
-        while (isActive) {
-            if (!isDragging) {
-                playbackPosition = exoPlayer.currentPosition
-                duration = exoPlayer.duration.coerceAtLeast(0L)
-            }
-            delay(200.milliseconds)
-        }
-    }
+    // Обновление позиции воспроизведения вынесено в BottomPlayerControls, чтобы не рекомпозировать весь экран!
 
     LaunchedEffect(exoPlayer) {
         mainActivity?.pipCommands?.collect { type ->
@@ -360,8 +351,13 @@ fun PlayerScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            // Reset immersive mode
+            // Reset immersive mode & brightness
             activity?.window?.let { window ->
+                try {
+                    val lp = window.attributes
+                    lp.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    window.attributes = lp
+                } catch (_: Exception) {}
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
             }
@@ -704,7 +700,6 @@ fun PlayerScreen(
             BottomPlayerControls(
                 exoPlayer = exoPlayer,
                 isPlaying = isPlaying,
-                position = playbackPosition,
                 duration = duration,
                 isDragging = isDragging,
                 isLandscape = isLandscape,
@@ -735,7 +730,6 @@ fun PlayerScreen(
                 },
                 onDragEnd = { targetValue ->
                     val targetMs = (targetValue * duration).toLong().coerceIn(0L, duration.coerceAtLeast(1L))
-                    playbackPosition = targetMs
                     exoPlayer.seekTo(targetMs)
                     if (wasPlayingBeforeDrag) exoPlayer.play()
                     coroutineScope.launch {
@@ -1116,7 +1110,6 @@ fun TopPlayerBar(
 fun BottomPlayerControls(
     exoPlayer: ExoPlayer,
     isPlaying: Boolean,
-    position: Long,
     duration: Long,
     isDragging: Boolean,
     isLandscape: Boolean,
@@ -1128,13 +1121,20 @@ fun BottomPlayerControls(
     onDragEnd: (Float) -> Unit,
     onInteraction: () -> Unit = {}
 ) {
+    var currentPos by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var localSliderValue by remember {
-        mutableFloatStateOf(if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f)
+        mutableFloatStateOf(if (duration > 0) (currentPos.toFloat() / duration).coerceIn(0f, 1f) else 0f)
     }
 
-    LaunchedEffect(position, duration, isDragging) {
-        if (!isDragging && duration > 0) {
-            localSliderValue = (position.toFloat() / duration).coerceIn(0f, 1f)
+    LaunchedEffect(exoPlayer, duration, isDragging) {
+        while (isActive) {
+            if (!isDragging) {
+                currentPos = exoPlayer.currentPosition
+                if (duration > 0) {
+                    localSliderValue = (currentPos.toFloat() / duration).coerceIn(0f, 1f)
+                }
+            }
+            delay(200)
         }
     }
 
@@ -1163,9 +1163,9 @@ fun BottomPlayerControls(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentPos = if (isDragging) (localSliderValue * duration).toLong() else position
+                    val currentPosForText = if (isDragging) (localSliderValue * duration).toLong() else currentPos
                     Text(
-                        text = formatTime(currentPos),
+                        text = formatTime(currentPosForText),
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
@@ -1302,9 +1302,9 @@ fun BottomPlayerControls(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentPos = if (isDragging) (localSliderValue * duration).toLong() else position
+                    val currentPosForText = if (isDragging) (localSliderValue * duration).toLong() else currentPos
                     Text(
-                        text = formatTime(currentPos),
+                        text = formatTime(currentPosForText),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,

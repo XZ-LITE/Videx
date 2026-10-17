@@ -396,8 +396,15 @@ object HistoryManager {
                     } else {
                         retriever.setDataSource(pathOrUri)
                     }
-                    val bitmap = retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                        ?: retriever.frameAtTime
+                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        try {
+                            retriever.getScaledFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 480, 270)
+                        } catch (_: Exception) {
+                            retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        }
+                    } else {
+                        retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    } ?: retriever.frameAtTime
                     if (bitmap != null) {
                         FileOutputStream(localThumbFile).use { out ->
                             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
@@ -560,6 +567,13 @@ object HistoryManager {
                 }
             }
 
+            if (item.thumbnailUrl != null) {
+                try {
+                    val thumbFile = File(item.thumbnailUrl)
+                    if (thumbFile.exists()) thumbFile.delete()
+                } catch (_: Exception) {}
+            }
+
             AppDatabase.getDatabase(appContext).historyDao().delete(item)
             AsyncLogger.log(LogLevel.INFO, "Файл удален из базы Room: ${item.name}")
             true
@@ -600,6 +614,11 @@ object HistoryManager {
                     }
                 } catch (_: Exception) {}
             }
+
+            try {
+                val thumbnailsDir = File(appContext.filesDir, "thumbnails")
+                if (thumbnailsDir.exists()) thumbnailsDir.deleteRecursively()
+            } catch (_: Exception) {}
 
             dao.clearAll()
             AsyncLogger.log(LogLevel.INFO, "История и база Room полностью очищены")

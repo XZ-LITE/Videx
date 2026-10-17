@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1624,7 +1625,9 @@ fun CompactDownloadCard(task: DownloadTaskStatus, onCancel: () -> Unit) {
     // 🌊 Анимация светового Shimmer-блика при активном скачивании (1% .. 99%)
     val isActivelyDownloading = task.progress in 1..99
     val transition = rememberInfiniteTransition(label = "ShimmerTransition")
-    val shimmerTranslateAnim by transition.animateFloat(
+    
+    // Передаем анимацию как функцию (State), чтобы не рекомпозировать весь экран на каждый кадр
+    val shimmerTranslateAnim = transition.animateFloat(
         initialValue = 0f,
         targetValue = 1200f,
         animationSpec = infiniteRepeatable(
@@ -1634,19 +1637,10 @@ fun CompactDownloadCard(task: DownloadTaskStatus, onCancel: () -> Unit) {
         label = "ShimmerOffset"
     )
 
-    val progressBrush = if (isActivelyDownloading) {
-        Brush.linearGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-            ),
-            start = Offset(shimmerTranslateAnim - 300f, shimmerTranslateAnim - 300f),
-            end = Offset(shimmerTranslateAnim, shimmerTranslateAnim)
-        )
-    } else {
-        SolidColor(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f))
-    }
+    val shimmerColorStart = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    val shimmerColorMid = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+    val shimmerColorEnd = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    val fallbackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
 
     Surface(
         modifier = Modifier
@@ -1661,10 +1655,20 @@ fun CompactDownloadCard(task: DownloadTaskStatus, onCancel: () -> Unit) {
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(animatedProgress)
-                        .background(
-                            brush = progressBrush,
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                        .clip(RoundedCornerShape(12.dp))
+                        .drawBehind {
+                            if (isActivelyDownloading) {
+                                val translate = shimmerTranslateAnim.value
+                                val brush = Brush.linearGradient(
+                                    colors = listOf(shimmerColorStart, shimmerColorMid, shimmerColorEnd),
+                                    start = Offset(translate - 300f, translate - 300f),
+                                    end = Offset(translate, translate)
+                                )
+                                drawRect(brush = brush)
+                            } else {
+                                drawRect(color = fallbackColor)
+                            }
+                        }
                 )
             }
 

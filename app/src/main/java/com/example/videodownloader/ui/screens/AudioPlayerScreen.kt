@@ -748,11 +748,13 @@ private fun AudioEqualizerWaveform(isPlaying: Boolean) {
         modifier = Modifier.height(18.dp)
     ) {
         barHeights.forEach { heightState ->
-            val animatedHeight = if (isPlaying) heightState.value else 0.25f
             Box(
                 modifier = Modifier
                     .width(3.5.dp)
-                    .height((18 * animatedHeight).dp)
+                    .height(18.dp)
+                    .graphicsLayer {
+                        scaleY = if (isPlaying) heightState.value else 0.25f
+                    }
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary)
             )
