@@ -20,6 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.graphics.Color
 import com.example.videodownloader.logic.AppUpdateChecker
 import com.example.videodownloader.logic.AppUpdateInfo
 import kotlinx.coroutines.launch
@@ -270,8 +277,19 @@ fun AppUpdateDialog(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(6.dp))
+                            
+                            val primaryColor = MaterialTheme.colorScheme.primary
+                            val codeBgColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                            val annotatedNotes = remember(updateInfo.releaseNotes) {
+                                parseMarkdownToAnnotatedString(
+                                    if (updateInfo.releaseNotes.isNotBlank()) updateInfo.releaseNotes else "• Улучшения производительности и исправления ошибок.",
+                                    primaryColor,
+                                    codeBgColor
+                                )
+                            }
+                            
                             Text(
-                                text = if (updateInfo.releaseNotes.isNotBlank()) updateInfo.releaseNotes else "• Улучшения производительности и исправления ошибок.",
+                                text = annotatedNotes,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 18.sp
@@ -341,6 +359,85 @@ fun AppUpdateDialog(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Парсер простого Markdown для красивого отображения Release Notes с GitHub.
+ * Поддерживает жирный шрифт (**bold**), ссылки ([text](url)) и блоки кода (`code`).
+ */
+fun parseMarkdownToAnnotatedString(text: String, primaryColor: Color, codeBgColor: Color): androidx.compose.ui.text.AnnotatedString {
+    return buildAnnotatedString {
+        val lines = text.split("\n")
+        for ((index, line) in lines.withIndex()) {
+            var currentLine = line
+            var isHeader = false
+
+            if (currentLine.startsWith("### ")) {
+                currentLine = currentLine.removePrefix("### ")
+                isHeader = true
+            } else if (currentLine.startsWith("## ")) {
+                currentLine = currentLine.removePrefix("## ")
+                isHeader = true
+            } else if (currentLine.startsWith("# ")) {
+                currentLine = currentLine.removePrefix("# ")
+                isHeader = true
+            }
+
+            val lineStyle = if (isHeader) {
+                SpanStyle(fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = primaryColor)
+            } else {
+                SpanStyle()
+            }
+
+            withStyle(lineStyle) {
+                var i = 0
+                while (i < currentLine.length) {
+                    // Парсинг жирного текста (**text**)
+                    if (currentLine.startsWith("**", i)) {
+                        val end = currentLine.indexOf("**", i + 2)
+                        if (end != -1) {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                append(currentLine.substring(i + 2, end))
+                            }
+                            i = end + 2
+                            continue
+                        }
+                    }
+                    // Парсинг блоков кода (`text`)
+                    if (currentLine.startsWith("`", i)) {
+                        val end = currentLine.indexOf("`", i + 1)
+                        if (end != -1) {
+                            withStyle(SpanStyle(background = codeBgColor, fontFamily = FontFamily.Monospace, fontSize = 12.sp)) {
+                                append(currentLine.substring(i + 1, end))
+                            }
+                            i = end + 1
+                            continue
+                        }
+                    }
+                    // Парсинг ссылок [text](url)
+                    if (currentLine.startsWith("[", i)) {
+                        val closeBracket = currentLine.indexOf("]", i + 1)
+                        if (closeBracket != -1 && currentLine.length > closeBracket + 1 && currentLine[closeBracket + 1] == '(') {
+                            val closeParen = currentLine.indexOf(")", closeBracket + 2)
+                            if (closeParen != -1) {
+                                val linkText = currentLine.substring(i + 1, closeBracket)
+                                withStyle(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Bold)) {
+                                    append(linkText)
+                                }
+                                i = closeParen + 1
+                                continue
+                            }
+                        }
+                    }
+                    append(currentLine[i])
+                    i++
+                }
+            }
+            if (index < lines.size - 1) {
+                append("\n")
             }
         }
     }
