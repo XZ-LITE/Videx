@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +47,10 @@ fun StorageSettingsScreen(
     var cacheSizeText by remember { mutableStateOf("0 КБ") }
     var showTemplateDialog by remember { mutableStateOf(false) }
     var showDiskSpaceDialog by remember { mutableStateOf(false) }
+
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var isRestoring by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(Unit) {
         val sizeBytes = CacheManager.getCacheSizeBytes(context)
@@ -80,16 +85,57 @@ fun StorageSettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            coroutineScope.launch {
-                val res = BackupManager.importData(context, uri)
-                if (res.isSuccess) {
-                    val count = res.getOrDefault(0)
-                    snackbarHostState.showInstantSnackbar("Восстановлено записей: $count. Перезапустите приложение.")
-                } else {
-                    snackbarHostState.showInstantSnackbar("Ошибка восстановления: Неверный формат файла")
+            pendingRestoreUri = uri
+            showRestoreDialog = true
+        }
+    }
+
+    if (showRestoreDialog && pendingRestoreUri != null) {
+        AlertDialog(
+            onDismissRequest = { if (!isRestoring) showRestoreDialog = false },
+            title = { Text("Восстановить данные?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    text = "Это действие полностью перезапишет текущие настройки и историю загрузок данными из файла. Вы уверены?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isRestoring = true
+                        coroutineScope.launch {
+                            val res = BackupManager.importData(context, pendingRestoreUri!!)
+                            isRestoring = false
+                            showRestoreDialog = false
+                            if (res.isSuccess) {
+                                val count = res.getOrDefault(0)
+                                snackbarHostState.showInstantSnackbar("Восстановлено записей: $count. Перезапустите приложение.")
+                            } else {
+                                snackbarHostState.showInstantSnackbar("Ошибка восстановления: Неверный формат файла или нехватка памяти")
+                            }
+                        }
+                    },
+                    enabled = !isRestoring
+                ) {
+                    if (isRestoring) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Загрузка...")
+                    } else {
+                        Text("Восстановить")
+                    }
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showRestoreDialog = false },
+                    enabled = !isRestoring
+                ) {
+                    Text("Отмена")
                 }
             }
-        }
+        )
     }
 
     if (showTemplateDialog) {

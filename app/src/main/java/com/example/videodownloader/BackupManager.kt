@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InputStreamReader
@@ -33,17 +34,35 @@ object BackupManager {
             rootJson.put("timestamp", System.currentTimeMillis())
             rootJson.put("date_created", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
 
-            // 1. Экспорт настроек (SharedPreferences)
+            // 1. Экспорт настроек (SharedPreferences) с жесткой типизацией
             val settingsJson = JSONObject()
+            val booleans = JSONObject()
+            val ints = JSONObject()
+            val longs = JSONObject()
+            val floats = JSONObject()
+            val strings = JSONObject()
+            val stringSets = JSONObject()
+
             for ((key, value) in prefs.all) {
                 when (value) {
-                    is Boolean -> settingsJson.put(key, value)
-                    is String -> settingsJson.put(key, value)
-                    is Int -> settingsJson.put(key, value)
-                    is Float -> settingsJson.put(key, value)
-                    is Long -> settingsJson.put(key, value)
+                    is Boolean -> booleans.put(key, value)
+                    is Int -> ints.put(key, value)
+                    is Long -> longs.put(key, value)
+                    is Float -> floats.put(key, value.toDouble())
+                    is String -> strings.put(key, value)
+                    is Set<*> -> {
+                        val array = JSONArray()
+                        value.forEach { if (it is String) array.put(it) }
+                        stringSets.put(key, array)
+                    }
                 }
             }
+            settingsJson.put("booleans", booleans)
+            settingsJson.put("ints", ints)
+            settingsJson.put("longs", longs)
+            settingsJson.put("floats", floats)
+            settingsJson.put("strings", strings)
+            settingsJson.put("stringSets", stringSets)
             rootJson.put("settings", settingsJson)
 
             // 2. Экспорт истории
@@ -88,6 +107,15 @@ object BackupManager {
      */
     suspend fun importData(context: Context, uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         try {
+            // Защита от OOM: ограничение размера файла бэкапа до 15 МБ
+            val pfd = context.contentResolver.openFileDescriptor(uri, "r")
+            val fileSize = pfd?.statSize ?: 0L
+            pfd?.close()
+
+            if (fileSize > 15 * 1024 * 1024) {
+                throw IllegalArgumentException("Файл слишком большой (> 15 МБ). Выберите корректный файл резервной копии Videx.")
+            }
+
             val jsonString = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 InputStreamReader(inputStream, Charsets.UTF_8).use { reader ->
                     reader.readText()
@@ -100,22 +128,44 @@ object BackupManager {
             val version = rootJson.optInt("version", 0)
             if (version == 0) throw Exception("Некорректный формат файла резервной копии")
 
-            // 1. Импорт настроек
+            // 1. Импорт настроек с жесткой проверкой типов (Защита от ClassCastException)
             val settingsJson = rootJson.optJSONObject("settings")
             if (settingsJson != null) {
                 val prefs = context.getSharedPreferences("app_settings_prefs", Context.MODE_PRIVATE)
                 val editor = prefs.edit()
                 
-                settingsJson.keys().forEach { key ->
-                    val value = settingsJson.get(key)
-                    when (value) {
-                        is Boolean -> editor.putBoolean(key, value)
-                        is String -> editor.putString(key, value)
-                        is Int -> editor.putInt(key, value)
-                        is Double -> editor.putFloat(key, value.toFloat()) // JSON парсит float как double
-                        is Long -> editor.putLong(key, value)
+                settingsJson.optJSONObject("booleans")?.let { b ->
+                    b.keys().forEach { editor.putBoolean(it, b.getBoolean(it)) }
+                }
+                settingsJson.optJSONObject("ints")?.let { i ->
+                    i.keys().forEach { editor.putInt(it, i.getInt(it)) }
+                }
+                settingsJson.optJSONObject("longs")?.let { l ->
+                    l.keys().forEach { editor.putLong(it, l.getLong(it)) }
+                }
+                settingsJson.optJSONObject("floats")?.let { f ->
+                    f.keys().forEach { editor.putFloat(it, f.getDouble(it).toFloat()) }
+                }
+                settingsJson.optJSONObject("strings")?.let { s ->
+                    s.keys().forEach { editor.putString(it, s.getString(it)) }
+                }
+                settingsJson.optJSONObject("stringSets")?.let { sets ->
+                    sets.keys().forEach { key ->
+                        val arr = sets.getJSONArray(key)
+                        val set = (0 until arr.length()).map { arr.getString(it) }.toSet()
+                        editor.putStringSet(key, set)
                     }
                 }
+                
+                // Защита прав SAF при импорте папки назначения
+                val persistedUris = context.contentResolver.persistedUriPermissions.map { it.uri.toString() }
+                val customDir = prefs.getString("custom_dir_uri", null)
+                if (customDir != null && customDir !in persistedUris) {
+                    editor.remove("custom_dir_uri")
+                    editor.remove("custom_dir_name")
+                    AsyncLogger.log(LogLevel.WARN, "Сброшены права SAF на сохраненную папку загрузок.")
+                }
+
                 editor.commit() // Синхронное сохранение
                 
                 // Перезагружаем стейты настроек в память
@@ -136,26 +186,52 @@ object BackupManager {
                     val mediaTypeStr = itemJson.optString("mediaType", "VIDEO")
                     val mediaType = try { MediaType.valueOf(mediaTypeStr) } catch (_: Exception) { MediaType.VIDEO }
                     
+                    val pathOrUri = itemJson.optString("pathOrUri", "")
+                    
+                    // 🛡️ Проверка реального существования файла на новом устройстве
+                    val fileExists = when {
+                        pathOrUri.isBlank() -> false
+                        pathOrUri.startsWith("content://") -> {
+                            try {
+                                context.contentResolver.openInputStream(Uri.parse(pathOrUri))?.use { true } ?: false
+                            } catch (_: Exception) { false }
+                        }
+                        else -> java.io.File(pathOrUri).exists()
+                    }
+                    
+                    val isMissing = if (!fileExists) true else itemJson.optBoolean("isMissing", false)
+                    
+                    // Очистка пути к миниатюре, если файл отсутствует
+                    var thumbUrl = if (itemJson.has("thumbnailUrl")) itemJson.getString("thumbnailUrl") else null
+                    if (thumbUrl != null && !java.io.File(thumbUrl).exists()) {
+                        thumbUrl = null
+                    }
+                    
                     val item = DownloadedFileItem(
                         id = itemJson.optString("id", java.util.UUID.randomUUID().toString()),
-                        pathOrUri = itemJson.optString("pathOrUri", ""),
+                        pathOrUri = pathOrUri,
                         name = itemJson.optString("name", "Unknown"),
                         sizeBytes = itemJson.optLong("sizeBytes", 0L),
                         sizeFormatted = itemJson.optString("sizeFormatted", "0 B"),
                         dateFormatted = itemJson.optString("dateFormatted", ""),
                         mediaType = mediaType,
                         sourceUrl = itemJson.optString("sourceUrl", ""),
-                        thumbnailUrl = if (itemJson.has("thumbnailUrl")) itemJson.getString("thumbnailUrl") else null,
+                        thumbnailUrl = thumbUrl,
                         durationMs = itemJson.optLong("durationMs", 0L),
                         timestamp = itemJson.optLong("timestamp", System.currentTimeMillis()),
-                        isMissing = itemJson.optBoolean("isMissing", false)
+                        isMissing = isMissing
                     )
                     newItems.add(item)
                 }
                 
                 if (newItems.isNotEmpty()) {
-                    historyDao.clearAll() // Очищаем старую историю
-                    historyDao.insertAll(newItems)
+                    // 🔄 Транзакционная вставка: либо обе операции успешны, либо ни одна
+                    db.runInTransaction {
+                        runBlocking {
+                            historyDao.clearAll()
+                            historyDao.insertAll(newItems)
+                        }
+                    }
                     itemsRestored = newItems.size
                 }
             }
