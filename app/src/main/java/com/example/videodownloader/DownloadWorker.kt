@@ -27,7 +27,6 @@ import com.example.videodownloader.utils.detectPlatformName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
 import java.io.File
@@ -266,7 +265,7 @@ class DownloadWorker(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             val status = PerformanceManager.thermalStatus.value
                             if (status >= PowerManager.THERMAL_STATUS_SEVERE) {
-                                runBlocking { delay(200) }
+                                Thread.sleep(200)
                             }
                         }
 
@@ -414,8 +413,9 @@ class DownloadWorker(
                 putExtra(NotificationReceiver.EXTRA_WORK_ID, id.toString())
                 putExtra(NotificationReceiver.EXTRA_NOTIF_ID, currentNotifId)
             }
+            val cancelReqCode = currentNotifId * 10 + 1
             val cancelPendingIntent = PendingIntent.getBroadcast(
-                context, 9999, cancelIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                context, cancelReqCode, cancelIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Отменить", cancelPendingIntent)
         }
@@ -488,16 +488,18 @@ class DownloadWorker(
                         putExtra(NotificationReceiver.EXTRA_ITEM_ID, item.id)
                         putExtra(NotificationReceiver.EXTRA_IS_AUTOPILOT, isAutopilot)
                     }
+                    val shareCallbackReqCode = (item.id.hashCode() * 31 + 1) and 0x7FFFFFFF
                     val callbackPendingIntent = PendingIntent.getBroadcast(
-                        context, (2001..3000).random(), receiverIntent,
+                        context, shareCallbackReqCode, receiverIntent,
                         PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     )
 
                     val chooserIntent = Intent.createChooser(shareIntent, "Поделиться через", callbackPendingIntent.intentSender)
                     chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     
+                    val shareChooserReqCode = (item.id.hashCode() * 31 + 2) and 0x7FFFFFFF
                     val sharePendingIntent = PendingIntent.getActivity(
-                        context, (1001..2000).random(), chooserIntent,
+                        context, shareChooserReqCode, chooserIntent,
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     )
                     builder.addAction(android.R.drawable.ic_menu_share, "Поделиться", sharePendingIntent)
@@ -509,8 +511,9 @@ class DownloadWorker(
                         putExtra(NotificationReceiver.EXTRA_ITEM_ID, item.id)
                         putExtra(NotificationReceiver.EXTRA_NOTIF_ID, notifId)
                     }
+                    val deleteReqCode = (item.id.hashCode() * 31 + 3) and 0x7FFFFFFF
                     val deletePendingIntent = PendingIntent.getBroadcast(
-                        context, (2001..3000).random(), deleteIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                        context, deleteReqCode, deleteIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     )
                     builder.addAction(android.R.drawable.ic_menu_delete, "Удалить", deletePendingIntent)
                 }

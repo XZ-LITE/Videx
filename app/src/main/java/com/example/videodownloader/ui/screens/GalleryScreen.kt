@@ -308,12 +308,7 @@ fun GalleryScreen(
                     // Поделиться
                     ActionIconButton(Icons.Default.Share) {
                         view.performAppHaptic(HapticType.CLICK)
-                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type = "image/*"
-                            putExtra(android.content.Intent.EXTRA_STREAM, modelUriOrFile.let { if (it is File) Uri.fromFile(it) else it as Uri })
-                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(android.content.Intent.createChooser(intent, "Отправить"))
+                        HistoryManager.shareMultipleFiles(context, listOf(item))
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))

@@ -61,14 +61,14 @@ object YtDlpBridge {
      */
     fun warmUp(context: Context) {
         val appContext = context.applicationContext
-        CoroutineScope(Dispatchers.IO).launch {
+        Thread {
             try {
-                // 1. Устанавливаем фоновый приоритет для потока прогрева,
-                // чтобы OS отдавала высший приоритет UI и RenderThread
+                // 1. Устанавливаем фоновый приоритет для изолированного Java-потока,
+                // чтобы не портить системный пул Dispatchers.IO
                 android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
 
-                // 2. Откладываем тяжелый импорт Python на 3.5 сек, давая Compose полностью прорисовать интерфейс
-                delay(3500.milliseconds)
+                // 2. Откладываем тяжелый импорт Python на 3.5 сек
+                Thread.sleep(3500)
 
                 if (!Python.isStarted()) {
                     AsyncLogger.log(LogLevel.INFO, "Python: Фоновый незаметный старт рантайма...")
@@ -200,7 +200,9 @@ object YtDlpBridge {
         onProgress: (percent: Int, speedBytes: Long, etaSeconds: Long) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        val cacheDir = File(appContext.cacheDir, "downloads_temp")
+        // 🔒 ИЗОЛЯЦИЯ: Создаем уникальную папку сессии для безопасных параллельных загрузок
+        val sessionCacheId = java.util.UUID.randomUUID().toString()
+        val cacheDir = File(appContext.cacheDir, "downloads_temp/$sessionCacheId")
         try {
             cacheDir.mkdirs()
             val py = Python.getInstance()
@@ -384,10 +386,10 @@ object YtDlpBridge {
         } finally {
             try {
                 if (cacheDir.exists()) {
-                    cacheDir.listFiles()?.forEach { it.delete() }
+                    cacheDir.deleteRecursively()
                 }
             } catch (e: Exception) {
-                AsyncLogger.log(LogLevel.WARN, "Ошибка очистки кэша: ${e.message}")
+                AsyncLogger.log(LogLevel.WARN, "Ошибка очистки кэша сессии: ${e.message}")
             }
         }
     }

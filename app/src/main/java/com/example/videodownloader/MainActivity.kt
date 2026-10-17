@@ -276,10 +276,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (isPlayerActive && SettingsManager.pipEnabled.value) {
-            isLeavingForPip = true
-            updatePipParams()
-            enterPictureInPictureMode(pipParamsBuilder.build())
+        if (isPlayerActive && SettingsManager.pipEnabled.value && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            try {
+                isLeavingForPip = true
+                updatePipParams()
+                enterPictureInPictureMode(pipParamsBuilder.build())
+            } catch (e: Exception) {
+                isLeavingForPip = false
+                AsyncLogger.log(LogLevel.WARN, "Ошибка перехода в PiP режим: ${e.message}")
+            }
         }
     }
 
@@ -287,16 +292,20 @@ class MainActivity : ComponentActivity() {
 
     fun updatePipAspectRatio(width: Int, height: Int) {
         if (width > 0 && height > 0) {
-            val ratio = width.toFloat() / height.toFloat()
-            val clampedRatio = ratio.coerceIn(0.42f, 2.38f)
-            val rational = if (clampedRatio > 1) {
-                 Rational((clampedRatio * 100).toInt(), 100)
-            } else {
-                 Rational(100, (100 / clampedRatio).toInt())
+            try {
+                val ratio = width.toFloat() / height.toFloat()
+                val clampedRatio = ratio.coerceIn(0.42f, 2.38f)
+                val rational = if (clampedRatio > 1) {
+                     Rational((clampedRatio * 100).toInt(), 100)
+                } else {
+                     Rational(100, (100 / clampedRatio).toInt())
+                }
+                
+                pipParamsBuilder.setAspectRatio(rational)
+                updatePipParams()
+            } catch (e: Exception) {
+                AsyncLogger.log(LogLevel.WARN, "Ошибка пропорций PiP: ${e.message}")
             }
-            
-            pipParamsBuilder.setAspectRatio(rational)
-            updatePipParams()
         }
     }
 

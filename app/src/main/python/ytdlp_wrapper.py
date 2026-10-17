@@ -705,7 +705,7 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
                     '-movflags', 'faststart' # Оптимизируем MP4 для быстрого старта видео
                 ]
             }
-            ydl_opts['merge_output_format'] = 'mp4/mkv'
+            ydl_opts['merge_output_format'] = 'mp4'
 
         if int(rate_limit) > 0:
             ydl_opts['ratelimit'] = int(rate_limit)
@@ -728,6 +728,8 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
                     try:
                         ydl.process_info(info)
                     except Exception as pe:
+                        if "DOWNLOAD_CANCELLED" in str(pe):
+                            raise pe
                         info = ydl.extract_info(url, download=True)
                 else:
                     info = ydl.extract_info(url, download=True)
@@ -736,8 +738,11 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
 
                 if has_ffmpeg and not is_audio_only:
                     base_name = os.path.splitext(filename)[0]
-                    if os.path.exists(f"{base_name}.mp4"):
-                        filename = f"{base_name}.mp4"
+                    for ext in [".mp4", ".mkv", ".webm"]:
+                        candidate = f"{base_name}{ext}"
+                        if os.path.exists(candidate):
+                            filename = candidate
+                            break
 
                 return {
                     "status": "success",

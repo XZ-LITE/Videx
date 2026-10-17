@@ -116,24 +116,25 @@ object DownloadManager {
         }
     }
 
+    private val slotCounter = java.util.concurrent.atomic.AtomicInteger(0)
+
     private fun getBestSlot(): Int {
-        val maxSlots = SettingsManager.maxParallelDownloads.value
-        val tasks = _activeTasks.value
-
-        // Распределение нагрузки по слотам
-        val slotLoads = (1..maxSlots).associateWith { slot ->
-            tasks.count { it.slot == slot }
-        }
-
-        // Выбираем слот с минимальным количеством задач
-        return slotLoads.minByOrNull { it.value }?.key ?: 1
+        val maxSlots = SettingsManager.maxParallelDownloads.value.coerceAtLeast(1)
+        return (slotCounter.getAndIncrement() % maxSlots) + 1
     }
 
-    fun isAlreadyDownloading(url: String, title: String = ""): Boolean {
+    fun isAlreadyDownloading(context: Context, url: String, title: String = ""): Boolean {
         if (url.isBlank() && title.isBlank()) return false
+        val urlHashTag = "url_hash_${url.hashCode()}"
+        
         return _activeTasks.value.any { task ->
             ((url.isNotBlank() && task.url == url) || (title.isNotBlank() && task.title == title)) &&
                 (task.state == WorkInfo.State.RUNNING || task.state == WorkInfo.State.ENQUEUED || task.state == WorkInfo.State.BLOCKED)
+        } || runBlocking {
+            try {
+                val workInfos = WorkManager.getInstance(context.applicationContext).getWorkInfosByTag(urlHashTag).get()
+                workInfos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+            } catch (_: Exception) { false }
         }
     }
 
@@ -149,7 +150,7 @@ object DownloadManager {
         val appContext = context.applicationContext
         initObserver(appContext)
 
-        if (isAlreadyDownloading(url, title)) {
+        if (isAlreadyDownloading(appContext, url, title)) {
             AsyncLogger.log(LogLevel.WARN, "DownloadManager: Загрузка уже запущена: $url / $title")
             Toast.makeText(appContext, "Загрузка этой ссылки уже идет в фоне", Toast.LENGTH_SHORT).show()
             return
@@ -192,11 +193,12 @@ object DownloadManager {
                     DownloadWorker.KEY_PASSPORT to passportPath
                 )
             )
+            .addTag("url_hash_${url.hashCode()}")
             .build()
 
         workManager.enqueueUniqueWork(
             slotName,
-            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            ExistingWorkPolicy.APPEND,
             downloadWorkRequest
         )
 
@@ -251,11 +253,12 @@ object DownloadManager {
                         DownloadWorker.KEY_PASSPORT to passportPath
                     )
                 )
+                .addTag("url_hash_${item.url.hashCode()}")
                 .build()
 
             workManager.enqueueUniqueWork(
                 slotName,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
+                ExistingWorkPolicy.APPEND,
                 request
             )
         }

@@ -48,7 +48,7 @@ object AnalysisManager {
     val playlistEntries: StateFlow<List<PlaylistItem>> = _playlistEntries
 
     // Краткосрочный кэш результатов анализа (5 минут)
-    private val analysisCache = mutableMapOf<String, Pair<VideoMetadata, Long>>()
+    private val analysisCache = java.util.concurrent.ConcurrentHashMap<String, Pair<VideoMetadata, Long>>()
     private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L // 5 минут
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -125,34 +125,41 @@ object AnalysisManager {
             return
         }
 
-        // 2. Проверка сохраненных данных на диске
-        // Если в RAM нет, пробуем прочитать JSON файл напрямую без Python
-        appContext?.let { ctx ->
-            val passportFile = CacheManager.getPassportFile(ctx, targetUrl)
-            if (passportFile.exists() && (System.currentTimeMillis() - passportFile.lastModified() < CACHE_EXPIRATION_MS)) {
-                try {
-                    val jsonStr = passportFile.readText()
-                    val meta = parseMetadataFromJson(jsonStr)
-                    if (meta != null) {
-                        analysisCache[targetUrl] = meta to passportFile.lastModified()
-                        applyMetadata(meta)
-                        AsyncLogger.log(LogLevel.INFO, "Мгновенный анализ (DISK) для: $targetUrl")
-                        return
-                    }
-                } catch (e: Exception) {
-                    AsyncLogger.log(LogLevel.WARN, "Ошибка чтения паспорта: ${e.message}")
-                }
-            }
-        }
-
-        // Проверка наличия активного подключения к интернету
-        if (appContext != null && !com.example.videodownloader.utils.isNetworkAvailable(appContext)) {
-            _isAnalyzing.value = false
-            _errorMessage.value = "Отсутствует подключение к интернету. Проверьте сеть и повторите попытку."
-            return
-        }
-
         analyzeJob = scope.launch {
+            // 2. Проверка сохраненных данных на диске (Фоновый поток I/O)
+            val metaFromDisk = withContext(Dispatchers.IO) {
+                var resultMeta: VideoMetadata? = null
+                appContext?.let { ctx ->
+                    val passportFile = CacheManager.getPassportFile(ctx, targetUrl)
+                    if (passportFile.exists() && (System.currentTimeMillis() - passportFile.lastModified() < CACHE_EXPIRATION_MS)) {
+                        try {
+                            val jsonStr = passportFile.readText()
+                            val meta = parseMetadataFromJson(jsonStr)
+                            if (meta != null) {
+                                analysisCache[targetUrl] = meta to passportFile.lastModified()
+                                resultMeta = meta
+                            }
+                        } catch (e: Exception) {
+                            AsyncLogger.log(LogLevel.WARN, "Ошибка чтения паспорта: ${e.message}")
+                        }
+                    }
+                }
+                resultMeta
+            }
+
+            if (metaFromDisk != null) {
+                applyMetadata(metaFromDisk)
+                AsyncLogger.log(LogLevel.INFO, "Мгновенный анализ (DISK) для: $targetUrl")
+                return@launch
+            }
+
+            // Проверка наличия активного подключения к интернету
+            if (appContext != null && !com.example.videodownloader.utils.isNetworkAvailable(appContext)) {
+                _isAnalyzing.value = false
+                _errorMessage.value = "Отсутствует подключение к интернету. Проверьте сеть и повторите попытку."
+                return@launch
+            }
+
             try {
                 // Ограничение времени ожидания ответа от сервера до 25 секунд
                 val result = withTimeoutOrNull(25000L) {
