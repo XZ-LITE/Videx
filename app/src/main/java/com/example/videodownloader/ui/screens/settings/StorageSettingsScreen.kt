@@ -30,6 +30,7 @@ import com.example.videodownloader.FileNameTemplate
 import com.example.videodownloader.MinDiskSpace
 import com.example.videodownloader.R
 import com.example.videodownloader.SettingsManager
+import com.example.videodownloader.BackupManager
 import com.example.videodownloader.ui.components.showInstantSnackbar
 import kotlinx.coroutines.launch
 
@@ -57,6 +58,37 @@ fun StorageSettingsScreen(
         if (uri != null) {
             SettingsManager.setCustomDir(context, uri)
             coroutineScope.launch { snackbarHostState.showInstantSnackbar(context.getString(R.string.save_folder_changed_toast)) }
+        }
+    }
+
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val res = BackupManager.exportData(context, uri)
+                if (res.isSuccess) {
+                    snackbarHostState.showInstantSnackbar("Резервная копия успешно создана!")
+                } else {
+                    snackbarHostState.showInstantSnackbar("Ошибка создания резервной копии")
+                }
+            }
+        }
+    }
+
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val res = BackupManager.importData(context, uri)
+                if (res.isSuccess) {
+                    val count = res.getOrDefault(0)
+                    snackbarHostState.showInstantSnackbar("Восстановлено записей: $count. Перезапустите приложение.")
+                } else {
+                    snackbarHostState.showInstantSnackbar("Ошибка восстановления: Неверный формат файла")
+                }
+            }
         }
     }
 
@@ -483,6 +515,53 @@ fun StorageSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                             stateFlow = SettingsManager.checkDuplicates,
                             onCheckedChange = { SettingsManager.setCheckDuplicates(it) }
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = "РЕЗЕРВНОЕ КОПИРОВАНИЕ",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
+                    border = com.example.videodownloader.ui.theme.getAppCardBorder()
+                ) {
+                    Column {
+                        SettingsNavigationRow(
+                            title = "Создать резервную копию",
+                            subtitle = "Экспорт настроек и истории загрузок в JSON файл",
+                            icon = Icons.Default.Upload,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            onClick = {
+                                val fileName = "Videx_Backup_${System.currentTimeMillis()}.json"
+                                exportBackupLauncher.launch(fileName)
+                            }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                        SettingsNavigationRow(
+                            title = "Восстановить данные",
+                            subtitle = "Импорт настроек и истории из бэкап-файла",
+                            icon = Icons.Default.Download,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            onClick = {
+                                importBackupLauncher.launch(arrayOf("application/json", "*/*"))
+                            }
                         )
                     }
                 }
