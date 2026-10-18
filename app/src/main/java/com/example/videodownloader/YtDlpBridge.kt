@@ -98,7 +98,7 @@ object YtDlpBridge {
                 isPythonReady = false
                 AsyncLogger.log(LogLevel.WARN, "Python Warm-up fail: ${e.message}")
             }
-        }
+        }.start()
     }
 
     private fun ensureCustomCore(context: Context?, module: com.chaquo.python.PyObject) {

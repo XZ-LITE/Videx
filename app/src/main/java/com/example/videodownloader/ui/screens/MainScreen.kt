@@ -984,7 +984,7 @@ fun MainScreen(snackbarHostState: SnackbarHostState, viewModel: MainViewModel) {
                                     val sortedTasks by remember { derivedStateOf { activeTasks.sortedBy { it.slot } } }
                                     val isCurrentDownloadActive = remember(url, resultTitle, activeTasks, isDownloading) {
                                         if (url.isBlank() && resultTitle.isBlank()) false
-                                        else DownloadManager.isAlreadyDownloading(context, url, resultTitle) || (isDownloading && sortedTasks.isNotEmpty())
+                                        else DownloadManager.isAlreadyDownloading(url, resultTitle) || (isDownloading && sortedTasks.isNotEmpty())
                                     }
 
                                     Spacer(modifier = Modifier.height(6.dp))

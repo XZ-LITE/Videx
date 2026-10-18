@@ -287,6 +287,7 @@ fun HistoryScreen(
     }
 
     val showHistoryThumbnails by SettingsManager.showHistoryThumbnails.collectAsState()
+    val historyTitleMode by SettingsManager.historyTitleMode.collectAsState()
     val showHistorySort by SettingsManager.showHistorySort.collectAsState()
     val historySyncMode by SettingsManager.historySyncMode.collectAsState()
 
@@ -879,6 +880,7 @@ fun HistoryScreen(
                             isSelected = selectedItems.contains(item.id),
                             isSelectionMode = isSelectionMode,
                             showHistoryThumbnails = showHistoryThumbnails,
+                            historyTitleMode = historyTitleMode,
                             onCardClick = {
                                 if (isSelectionMode) {
                                     view.performAppHaptic(HapticType.CLICK)
@@ -937,6 +939,7 @@ private fun HistoryItemCard(
     isSelected: Boolean,
     isSelectionMode: Boolean,
     showHistoryThumbnails: Boolean,
+    historyTitleMode: com.example.videodownloader.HistoryTitleMode,
     onCardClick: () -> Unit,
     onCardLongClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -1076,7 +1079,6 @@ private fun HistoryItemCard(
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                val historyTitleMode by SettingsManager.historyTitleMode.collectAsState()
                 val titleModifier = when (historyTitleMode) {
                     com.example.videodownloader.HistoryTitleMode.MARQUEE -> Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                     else -> Modifier

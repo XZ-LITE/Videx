@@ -150,7 +150,8 @@ fun PlayerScreen(
     val videoViewBounds = remember { android.graphics.Rect() }
 
     // Плейлист видео из Истории
-    val historyList by HistoryManager.getHistoryFlow(context).collectAsState(initial = emptyList())
+    val historyFlow = remember(context) { HistoryManager.getHistoryFlow(context) }
+    val historyList by historyFlow.collectAsState(initial = emptyList())
     val videoList = remember(historyList, item) {
         val filtered = historyList.filter { it.mediaType == MediaType.VIDEO && !it.isMissing }
         if (filtered.none { it.id == item.id }) filtered + item else filtered

@@ -41,9 +41,18 @@ fun SpeedSettingsScreen(onBack: () -> Unit) {
     var selectedProfile by remember { mutableStateOf(NetworkProfile.WIFI) }
     val isWifi = selectedProfile == NetworkProfile.WIFI
 
-    val downloadThreads = if (isWifi) SettingsManager.threadsWifi.collectAsState().value else SettingsManager.threadsMobile.collectAsState().value
-    val rateLimit = if (isWifi) SettingsManager.rateLimitWifi.collectAsState().value else SettingsManager.rateLimitMobile.collectAsState().value
-    val throttledRate = if (isWifi) SettingsManager.throttledRateWifi.collectAsState().value else SettingsManager.throttledRateMobile.collectAsState().value
+    val threadsWifi by SettingsManager.threadsWifi.collectAsState()
+    val threadsMobile by SettingsManager.threadsMobile.collectAsState()
+    val downloadThreads = if (isWifi) threadsWifi else threadsMobile
+
+    val rateLimitWifi by SettingsManager.rateLimitWifi.collectAsState()
+    val rateLimitMobile by SettingsManager.rateLimitMobile.collectAsState()
+    val rateLimit = if (isWifi) rateLimitWifi else rateLimitMobile
+
+    val throttledRateWifi by SettingsManager.throttledRateWifi.collectAsState()
+    val throttledRateMobile by SettingsManager.throttledRateMobile.collectAsState()
+    val throttledRate = if (isWifi) throttledRateWifi else throttledRateMobile
+
     val maxParallel = SettingsManager.maxParallelDownloads.collectAsState().value
 
     var showThreadsDialog by remember { mutableStateOf(false) }
