@@ -78,7 +78,6 @@ object AppUpdateChecker {
             val jsonObject = JSONObject(jsonData)
             val tagName = jsonObject.optString("tag_name", "").removePrefix("v").trim()
             val rawReleaseNotes = jsonObject.optString("body", "")
-            val cleanNotes = cleanMarkdownText(rawReleaseNotes)
 
             var downloadUrl = ""
             val assets = jsonObject.optJSONArray("assets")
@@ -104,7 +103,7 @@ object AppUpdateChecker {
             Result.success(
                 AppUpdateInfo(
                     latestVersion = tagName,
-                    releaseNotes = cleanNotes,
+                    releaseNotes = rawReleaseNotes,
                     downloadUrl = downloadUrl,
                     hasUpdate = hasUpdate
                 )
@@ -114,16 +113,6 @@ object AppUpdateChecker {
             AsyncLogger.log(LogLevel.ERROR, "AppUpdateChecker error: ${e.message}")
             Result.failure(Exception(userMsg))
         }
-    }
-
-    private fun cleanMarkdownText(raw: String): String {
-        return raw
-            .replace("```markdown", "")
-            .replace("```", "")
-            .replace(Regex("""\*\*(.*?)\*\*"""), "$1")
-            .replace(Regex("""\*(.*?)\*"""), "$1")
-            .replace(Regex("""#(.*?)\n"""), "$1\n")
-            .trim()
     }
 
     fun isVersionNewer(latest: String, current: String): Boolean {

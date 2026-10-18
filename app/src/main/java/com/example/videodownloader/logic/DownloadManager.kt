@@ -85,13 +85,14 @@ object DownloadManager {
                         )
                     } else if (enqueuedCount > 0) {
                         val firstEnqueued = workInfoList.find { (it.state == WorkInfo.State.ENQUEUED) || (it.state == WorkInfo.State.BLOCKED) }
+                        val enqueuedUrlTag = firstEnqueued?.tags?.firstOrNull { it.startsWith("url_hash_") }?.substringAfter("url_hash_") ?: ""
 
                         allTasks.add(
                             DownloadTaskStatus(
                                 id = firstEnqueued?.id ?: UUID.randomUUID(),
                                 slot = slot,
                                 title = "Ожидание в слоте $slot...",
-                                url = "",
+                                url = "url_hash_$enqueuedUrlTag", // Сохраняем формат тега для isAlreadyDownloading
                                 progress = 0,
                                 state = WorkInfo.State.ENQUEUED
                             )
@@ -194,7 +195,7 @@ object DownloadManager {
 
         workManager.enqueueUniqueWork(
             slotName,
-            ExistingWorkPolicy.APPEND,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             downloadWorkRequest
         )
 
