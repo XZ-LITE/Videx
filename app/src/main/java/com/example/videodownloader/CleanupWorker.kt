@@ -27,7 +27,11 @@ class CleanupWorker(
             Result.success()
         } catch (e: Exception) {
             AsyncLogger.log(LogLevel.ERROR, "CleanupWorker: Ошибка удаления файла $itemId: ${e.message}")
-            Result.retry()
+            if (runAttemptCount >= 3) {
+                Result.failure()
+            } else {
+                Result.retry()
+            }
         }
     }
 }
