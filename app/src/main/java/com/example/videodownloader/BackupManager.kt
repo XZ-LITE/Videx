@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
+import androidx.room.withTransaction
 import org.json.JSONObject
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -226,11 +226,9 @@ object BackupManager {
                 
                 if (newItems.isNotEmpty()) {
                     // 🔄 Транзакционная вставка: либо обе операции успешны, либо ни одна
-                    db.runInTransaction {
-                        runBlocking {
-                            historyDao.clearAll()
-                            historyDao.insertAll(newItems)
-                        }
+                    db.withTransaction {
+                        historyDao.clearAll()
+                        historyDao.insertAll(newItems)
                     }
                     itemsRestored = newItems.size
                 }

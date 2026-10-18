@@ -40,9 +40,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore/release.keystore")
-            storePassword = "androidappvidex"
-            keyAlias = "videxkey"
-            keyPassword = "androidappvidex"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "androidappvidex"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "videxkey"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "androidappvidex"
         }
     }
 
