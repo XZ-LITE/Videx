@@ -16,12 +16,29 @@ UNSUPPORTED_ERROR = None
 def set_custom_core_path(zip_path):
     """Динамически подключает скачанный ZIP-архив yt-dlp в sys.path"""
     try:
-        if os.path.exists(zip_path) and zip_path not in sys.path:
-            sys.path.insert(0, zip_path)
-            return {"status": "success"}
-        return {"status": "error", "error_msg": "File not found"}
+        if not os.path.exists(zip_path):
+            return {"status": "error", "error_msg": "Archive file not found on disk"}
+
+        # Удаляем старые пути к yt-dlp из sys.path (чтобы избежать конфликта версий)
+        sys.path = [p for p in sys.path if "ytdlp_" not in p and "yt-dlp" not in p]
+
+        # Вставляем новый путь на первое место
+        sys.path.insert(0, zip_path)
+
+        # Сбрасываем кэш импортов, чтобы Python заново нашел модуль в новом zip
+        import importlib
+        importlib.invalidate_caches()
+
+        # Если ядро уже было загружено, удаляем его из кэша модулей
+        if "yt_dlp" in sys.modules:
+            del sys.modules["yt_dlp"]
+
+        global YT_DLP_CORE
+        YT_DLP_CORE = None # Сбросим прогретый инстанс
+
+        return {"status": "success"}
     except Exception as e:
-        return {"status": "error", "error_msg": str(e)}
+        return {"status": "error", "error_msg": f"Python error: {str(e)}"}
 
 def pre_load():
     """

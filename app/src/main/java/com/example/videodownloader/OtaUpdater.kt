@@ -131,13 +131,19 @@ object OtaUpdater {
             
             val py = Python.getInstance()
             val module = py.getModule("ytdlp_wrapper")
-            val pyResult = module.callAttr("set_custom_core_path", targetFile.absolutePath).asMap()
+            val pyResult = module.callAttr("set_custom_core_path", targetFile.absolutePath)
+            
+            // Используем прямое приведение к Map<String, PyObject> через Chaquopy, 
+            // либо безопасное извлечение значения по строковому ключу
+            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
+                ?: pyResult.callAttr("get", "status")?.toString()
 
-            if (pyResult[py.builtins.callAttr("str", "status")]?.toString() == "success") {
+            if (status == "success") {
                 AsyncLogger.log(LogLevel.INFO, "OTA: Ядро успешно обновлено до $latestVersion!")
                 Result.success(latestVersion)
             } else {
-                throw Exception("Python не смог подключить новый путь к ядру")
+                val errorMsg = pyResult.callAttr("get", "error_msg")?.toString() ?: "Неизвестная ошибка Python"
+                throw Exception("Python не смог подключить новый путь к ядру: $errorMsg")
             }
 
         } catch (e: Exception) {

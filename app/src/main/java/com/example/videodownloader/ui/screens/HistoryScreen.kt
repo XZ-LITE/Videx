@@ -256,7 +256,9 @@ fun HistoryScreen(
     // Получаем состояние истории из ViewModel
     val fileList by mainViewModel.historyState.collectAsState()
 
-    var isScanning by remember { mutableStateOf(false) }
+    var isPullRefreshing by remember { mutableStateOf(false) }
+    var isButtonScanning by remember { mutableStateOf(false) }
+    val isScanning = isPullRefreshing || isButtonScanning
     var fileToDelete by remember { mutableStateOf<DownloadedFileItem?>(null) }
     var fileToPrune by remember { mutableStateOf<DownloadedFileItem?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -712,13 +714,13 @@ fun HistoryScreen(
                                 if (historySyncMode == com.example.videodownloader.HistorySyncMode.BOTH || historySyncMode == com.example.videodownloader.HistorySyncMode.BUTTON_ONLY) {
                                     IconButton(onClick = {
                                         coroutineScope.launch {
-                                            isScanning = true
+                                            isButtonScanning = true
                                             HistoryManager.syncWithStorage(context)
-                                            isScanning = false
+                                            isButtonScanning = false
                                             snackbarHostState.showInstantSnackbar("Синхронизация завершена")
                                         }
                                     }, enabled = !isScanning) {
-                                        if (isScanning) {
+                                        if (isButtonScanning) {
                                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                                         } else {
                                             Icon(Icons.Default.Sync, contentDescription = "Синхронизировать с памятью")
@@ -763,21 +765,12 @@ fun HistoryScreen(
             }
         }
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = isScanning,
-            onRefresh = {
-                val allowSwipe = historySyncMode == com.example.videodownloader.HistorySyncMode.BOTH || historySyncMode == com.example.videodownloader.HistorySyncMode.SWIPE_ONLY
-                if (allowSwipe && !isSelectionMode && !isScanning) {
-                    coroutineScope.launch {
-                        isScanning = true
-                        HistoryManager.syncWithStorage(context)
-                        isScanning = false
-                        snackbarHostState.showInstantSnackbar("Синхронизация завершена")
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxSize().padding(innerPadding)
-        ) {
+        val isSwipeAllowed = fileList.isNotEmpty() && !isSelectionMode && (
+            historySyncMode == com.example.videodownloader.HistorySyncMode.BOTH ||
+            historySyncMode == com.example.videodownloader.HistorySyncMode.SWIPE_ONLY
+        )
+
+        val listContent: @Composable () -> Unit = {
             LazyColumn(
                 state = listState, // 📜 ПРИВЯЗЫВАЕМ СОСТОЯНИЕ СКРОЛЛА
                 modifier = Modifier.fillMaxSize(),
@@ -835,9 +828,9 @@ fun HistoryScreen(
                                 Button(
                                     onClick = {
                                         coroutineScope.launch {
-                                            isScanning = true
+                                            isButtonScanning = true
                                             HistoryManager.syncWithStorage(context)
-                                            isScanning = false
+                                            isButtonScanning = false
                                             snackbarHostState.showInstantSnackbar("Память проверена")
                                         }
                                     },
@@ -845,7 +838,7 @@ fun HistoryScreen(
                                     shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
                                 ) {
-                                    if (isScanning) {
+                                    if (isButtonScanning) {
                                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                     } else {
                                         Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -925,6 +918,31 @@ fun HistoryScreen(
                         )
                     }
                 }
+            }
+        }
+
+        if (isSwipeAllowed) {
+            PullToRefreshBox(
+                isRefreshing = isPullRefreshing,
+                onRefresh = {
+                    if (!isScanning) {
+                        coroutineScope.launch {
+                            isPullRefreshing = true
+                            HistoryManager.syncWithStorage(context)
+                            isPullRefreshing = false
+                            snackbarHostState.showInstantSnackbar("Синхронизация завершена")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            ) {
+                listContent()
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            ) {
+                listContent()
             }
         }
     }
