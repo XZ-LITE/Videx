@@ -69,7 +69,9 @@ object OtaUpdater {
             for (i in 0 until assetsArray.length()) {
                 val asset = assetsArray.getJSONObject(i)
                 val name = asset.getString("name")
-                if (name == "yt-dlp" || name.endsWith(".tar.gz") || name.endsWith(".zip")) {
+                // Выбираем только бинарный zipapp (обычно называется "yt-dlp")
+                // Игнорируем исходники (.tar.gz), так как Python zipimport их не поддерживает
+                if (name == "yt-dlp" || name == "yt-dlp.zip") {
                     downloadUrl = asset.getString("browser_download_url")
                     break
                 }
