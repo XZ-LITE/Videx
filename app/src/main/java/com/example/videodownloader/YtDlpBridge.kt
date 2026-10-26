@@ -84,14 +84,15 @@ object YtDlpBridge {
                 }
                 
                 // 4. Выполняем фоновый предзагруз
-                val result = module.callAttr("pre_load").asMap()
-                val status = result[py.builtins.callAttr("str", "status")]?.toString()
+                val pyResult = module.callAttr("pre_load")
+                val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
+                    ?: pyResult.callAttr("get", "status")?.toString()
                 
                 if ((status == "success") || (status == "already_warm")) {
                     isPythonReady = true
                     AsyncLogger.log(LogLevel.INFO, "Python: Движок полностью прогрет и yt-dlp загружен.")
                 } else {
-                    val err = result[py.builtins.callAttr("str", "error_msg")]?.toString() ?: "Unknown error"
+                    val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Unknown error"
                     throw Exception(err)
                 }
             } catch (e: Exception) {
@@ -123,22 +124,26 @@ object YtDlpBridge {
 
                 AsyncLogger.log(LogLevel.INFO, "Парсинг ссылки: $url")
                 val passportPath = appContext?.let { CacheManager.getPassportFile(it, url).absolutePath } ?: ""
-                module.callAttr("get_video_info", url, cookiePath, useImpersonate, passportPath).asMap()
+                module.callAttr("get_video_info", url, cookiePath, useImpersonate, passportPath)
             }
 
             if (timedResult == null) {
                 AsyncLogger.log(LogLevel.ERROR, "Превышено время ожидания ответа от сервера (25 сек)")
                 return@withContext Result.failure(Exception("Превышено время ожидания ответа от сервера (25 сек)"))
             }
-            val result = timedResult
+            val pyResult = timedResult
+            
+            // Безопасное извлечение полей без asMap() и py.builtins, обход багов Chaquopy с ключами PyObject
+            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
+                ?: pyResult.callAttr("get", "status")?.toString()
 
-            if (result[py.builtins.callAttr("str", "status")]?.toString() == "success") {
-                val title = result[py.builtins.callAttr("str", "title")]?.toString() ?: "Без названия"
-                val thumb = result[py.builtins.callAttr("str", "thumbnail")]?.toString() ?: ""
-                val isPhoto = result[py.builtins.callAttr("str", "is_photo")]?.toBoolean() ?: false
-                val isPlaylist = result[py.builtins.callAttr("str", "is_playlist")]?.toBoolean() ?: false
+            if (status == "success") {
+                val title = pyResult.callAttr("get", "title")?.toString() ?: "Без названия"
+                val thumb = pyResult.callAttr("get", "thumbnail")?.toString() ?: ""
+                val isPhoto = pyResult.callAttr("get", "is_photo")?.toBoolean() ?: false
+                val isPlaylist = pyResult.callAttr("get", "is_playlist")?.toBoolean() ?: false
 
-                val qualitiesJson = result[py.builtins.callAttr("str", "available_qualities")]?.toString() ?: "[]"
+                val qualitiesJson = pyResult.callAttr("get", "available_qualities")?.toString() ?: "[]"
                 val qualitiesList = mutableListOf<String>()
                 try {
                     val arr = JSONArray(qualitiesJson)
@@ -148,7 +153,7 @@ object YtDlpBridge {
                 // Парсинг элементов плейлиста
                 val playlistEntries = mutableListOf<PlaylistItem>()
                 if (isPlaylist) {
-                    val entriesJson = result[py.builtins.callAttr("str", "playlist_entries")]?.toString() ?: "[]"
+                    val entriesJson = pyResult.callAttr("get", "playlist_entries")?.toString() ?: "[]"
                     try {
                         val arr = JSONArray(entriesJson)
                         for (i in 0 until arr.length()) {
@@ -172,7 +177,7 @@ object YtDlpBridge {
                 AsyncLogger.log(LogLevel.INFO, "Найдено: $title | Плейлист: $isPlaylist (${playlistEntries.size} эл.)")
                 Result.success(VideoMetadata(title, thumb, isPhoto, qualitiesList, isPlaylist, playlistEntries))
             } else {
-                val err = result[py.builtins.callAttr("str", "error_msg")]?.toString() ?: "Не удалось обработать ссылку"
+                val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Не удалось обработать ссылку"
                 AsyncLogger.log(LogLevel.ERROR, "Ошибка yt-dlp: $err")
                 Result.failure(Exception(err))
             }
@@ -226,7 +231,7 @@ object YtDlpBridge {
                 }
             }
 
-            val result = module.callAttr(
+            val pyResult = module.callAttr(
                 "download_video",
                 url,
                 cacheDir.absolutePath,
@@ -242,9 +247,11 @@ object YtDlpBridge {
                 useSponsorBlock,
                 useImpersonate,
                 passportPath
-            ).asMap()
+            )
 
-            val status = result[py.builtins.callAttr("str", "status")]?.toString()
+            // Безопасное извлечение полей без py.builtins
+            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
+                ?: pyResult.callAttr("get", "status")?.toString()
 
             if (status == "cancelled") {
                 AsyncLogger.log(LogLevel.INFO, "Загрузка отменена")
@@ -252,8 +259,8 @@ object YtDlpBridge {
             }
 
             if (status == "success") {
-                val isPhoto = result[py.builtins.callAttr("str", "is_photo")]?.toBoolean() ?: false
-                val allFilesJson = result[py.builtins.callAttr("str", "all_files")]?.toString() ?: "[]"
+                val isPhoto = pyResult.callAttr("get", "is_photo")?.toBoolean() ?: false
+                val allFilesJson = pyResult.callAttr("get", "all_files")?.toString() ?: "[]"
                 val jsonArr = JSONArray(allFilesJson)
                 val downloadedFiles = (0 until jsonArr.length()).map { File(jsonArr.getString(it)) }
 
@@ -367,7 +374,7 @@ object YtDlpBridge {
                 AsyncLogger.log(LogLevel.INFO, "Успешно сохранено файлов: ${downloadedFiles.size}")
                 Result.success(firstSavedFile ?: File(cacheDir, "done"))
             } else {
-                val err = result[py.builtins.callAttr("str", "error_msg")]?.toString() ?: "Неизвестная ошибка"
+                val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Неизвестная ошибка"
                 AsyncLogger.log(LogLevel.ERROR, "Ошибка при скачивании: $err")
                 Result.failure(Exception(err))
             }
