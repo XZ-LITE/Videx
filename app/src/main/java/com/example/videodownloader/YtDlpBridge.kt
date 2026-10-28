@@ -433,17 +433,25 @@ object YtDlpBridge {
             val itemUri = context.contentResolver.insert(collectionUri, contentValues)
                 ?: throw Exception("Не удалось создать запись в MediaStore")
 
-            context.contentResolver.openOutputStream(itemUri)?.use { out ->
-                FileInputStream(srcFile).use { input ->
-                    input.copyTo(out, bufferSize = BUFFER_SIZE)
-                }
+            try {
+                context.contentResolver.openOutputStream(itemUri)?.use { out ->
+                    FileInputStream(srcFile).use { input ->
+                        input.copyTo(out, bufferSize = BUFFER_SIZE)
+                    }
+                } ?: throw Exception("Не удалось открыть поток записи MediaStore")
+
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                context.contentResolver.update(itemUri, contentValues, null, null)
+
+                return itemUri.toString()
+            } catch (e: Exception) {
+                // 🛡️ БАГФИКС: Удаляем незавершенную запись с IS_PENDING=1 из MediaStore при сбое
+                try {
+                    context.contentResolver.delete(itemUri, null, null)
+                } catch (_: Exception) {}
+                throw e
             }
-
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            context.contentResolver.update(itemUri, contentValues, null, null)
-
-            return itemUri.toString()
         } else {
             val baseDir = when {
                 !saveToGallery -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
