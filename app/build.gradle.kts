@@ -1,7 +1,9 @@
 import java.net.URL
 import java.io.FileOutputStream
+import java.io.FileInputStream
 import java.util.zip.GZIPInputStream
 import java.security.MessageDigest
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -40,9 +42,16 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore/release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "androidappvidex"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "videxkey"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "androidappvidex"
+            
+            val localProperties = Properties()
+            val localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                localProperties.load(FileInputStream(localPropertiesFile))
+            }
+            
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: localProperties.getProperty("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: localProperties.getProperty("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: localProperties.getProperty("KEY_PASSWORD") ?: ""
         }
     }
 
@@ -82,7 +91,7 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.13"
-        buildPython("python")
+        buildPython("C:/Users/XZ_L1TE/AppData/Local/Programs/Python/Python313/python.exe")
         pip {
             install("yt-dlp")
             install("requests")

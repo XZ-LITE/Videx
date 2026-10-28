@@ -65,21 +65,44 @@ object OtaUpdater {
             // Ищем прямую ссылку на архив yt-dlp
             val assetsArray = jsonObject.getJSONArray("assets")
             var downloadUrl: String? = null
+            var checksumUrl: String? = null
+            var expectedFileName: String? = null
 
             for (i in 0 until assetsArray.length()) {
                 val asset = assetsArray.getJSONObject(i)
                 val name = asset.getString("name")
-                // Выбираем только бинарный zipapp (обычно называется "yt-dlp")
-                // Игнорируем исходники (.tar.gz), так как Python zipimport их не поддерживает
                 if (name == "yt-dlp" || name == "yt-dlp.zip") {
                     downloadUrl = asset.getString("browser_download_url")
-                    break
+                    expectedFileName = name
+                }
+                if (name == "SHA2-256SUMS") {
+                    checksumUrl = asset.getString("browser_download_url")
                 }
             }
 
             val finalUrl = downloadUrl ?: jsonObject.optString("zipball_url", "")
             if (finalUrl.isBlank()) {
                 throw Exception("Не удалось получить ссылку для загрузки архива")
+            }
+
+            // Получаем SHA-256 хэш, если доступен
+            var expectedHash: String? = null
+            if (checksumUrl != null && expectedFileName != null) {
+                try {
+                    val req = Request.Builder().url(checksumUrl).build()
+                    httpClient.newCall(req).execute().use { res ->
+                        if (res.isSuccessful) {
+                            val sums = res.body?.string() ?: ""
+                            sums.lines().forEach { line ->
+                                if (line.endsWith(expectedFileName!!)) {
+                                    expectedHash = line.substringBefore(" ").trim()
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    AsyncLogger.log(LogLevel.WARN, "OTA: Не удалось загрузить SHA-256 суммы: ${e.message}")
+                }
             }
 
             AsyncLogger.log(LogLevel.INFO, "OTA: Скачивание пакета с $finalUrl...")
@@ -110,6 +133,19 @@ object OtaUpdater {
                         }
                     }
                 }
+            }
+
+            // ПРОВЕРКА ХЭША
+            if (expectedHash != null) {
+                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                val actualHash = digest.digest(tempFile.readBytes()).joinToString("") { "%02x".format(it) }
+                if (!actualHash.equals(expectedHash, ignoreCase = true)) {
+                    tempFile.delete()
+                    throw Exception("Нарушена целостность файла! Ожидался SHA-256: $expectedHash, получено: $actualHash")
+                }
+                AsyncLogger.log(LogLevel.INFO, "OTA: Проверка SHA-256 пройдена успешно.")
+            } else {
+                AsyncLogger.log(LogLevel.WARN, "OTA: Проверка SHA-256 пропущена (хэш не найден).")
             }
 
             AsyncLogger.log(LogLevel.INFO, "OTA: Файл загружен (${tempFile.length() / 1024} КБ)")

@@ -48,13 +48,6 @@ object AuthManager {
     fun clearCookiesForPlatform(platformId: String) {
         val cookieManager = CookieManager.getInstance()
 
-        // Стираем HTML5 WebStorage и базы данных токенов
-        try {
-            WebStorage.getInstance().deleteAllData()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
         val targetUrls = when (platformId) {
             "yt" -> listOf(
                 "https://www.youtube.com",
@@ -85,6 +78,19 @@ object AuthManager {
                 "https://auth.tiktok.com"
             )
             else -> return
+        }
+        
+        // 🛡️ БАГФИКС: Удаляем WebStorage (LocalStorage, IndexedDB) только для доменов выбранной платформы
+        try {
+            val webStorage = WebStorage.getInstance()
+            targetUrls.forEach { url ->
+                val origin = Uri.parse(url).let { "${it.scheme}://${it.host}" }
+                webStorage.deleteOrigin(origin)
+                // Также очистим мобильные и полные версии
+                webStorage.deleteOrigin(origin.replace("://www.", "://m."))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         for (url in targetUrls) {

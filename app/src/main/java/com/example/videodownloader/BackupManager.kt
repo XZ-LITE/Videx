@@ -159,11 +159,13 @@ object BackupManager {
                 
                 // Защита прав SAF при импорте папки назначения
                 val persistedUris = context.contentResolver.persistedUriPermissions.map { it.uri.toString() }
-                val customDir = prefs.getString("custom_dir_uri", null)
-                if (customDir != null && customDir !in persistedUris) {
+                // 🛡️ БАГФИКС: Читаем новый путь из JSON, а не из старых SharedPreferences, которые еще не были закомичены
+                val customDir = settingsJson.optJSONObject("strings")?.optString("custom_dir_uri", "")
+                
+                if (!customDir.isNullOrEmpty() && customDir !in persistedUris) {
                     editor.remove("custom_dir_uri")
                     editor.remove("custom_dir_name")
-                    AsyncLogger.log(LogLevel.WARN, "Сброшены права SAF на сохраненную папку загрузок.")
+                    AsyncLogger.log(LogLevel.WARN, "Сброшены права SAF на сохраненную папку загрузок (путь невалиден на новом устройстве).")
                 }
 
                 editor.commit() // Синхронное сохранение

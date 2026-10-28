@@ -225,6 +225,15 @@ object AppUpdateChecker {
 
     fun promptInstallApk(context: Context, apkFile: File) {
         try {
+            // 🛡️ ПРОВЕРКА ПОДПИСИ: Убеждаемся, что скачанный APK подписан тем же сертификатом
+            if (!verifyApkSignature(context, apkFile)) {
+                AsyncLogger.log(LogLevel.ERROR, "КРИТИЧЕСКАЯ ОШИБКА: Подпись скачанного APK не совпадает с установленным!")
+                apkFile.delete()
+                pendingInstallFile = null
+                userRedirectedToSettings = false
+                return
+            }
+
             // 🛡️ ПРОВЕРКА ВЕРСИИ: Убеждаемся, что скачанный APK РЕАЛЬНО новее установленной версии!
             val apkVersion = getApkFileVersion(context, apkFile)
             val currentVersion = getInstalledVersionName(context)
@@ -289,6 +298,27 @@ object AppUpdateChecker {
             }
         } catch (e: Exception) {
             AsyncLogger.log(LogLevel.ERROR, "Ошибка возобновления установки APK: ${e.message}")
+        }
+    }
+
+    private fun verifyApkSignature(context: Context, apkFile: File): Boolean {
+        try {
+            val pm = context.packageManager
+            val packageInfo = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES) ?: return false
+            val currentPackageInfo = pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+
+            val currentSignatures = currentPackageInfo.signatures
+            val newSignatures = packageInfo.signatures
+
+            if (currentSignatures.isNullOrEmpty() || newSignatures.isNullOrEmpty()) return false
+
+            val currentHash = java.security.MessageDigest.getInstance("SHA-256").digest(currentSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+            val newHash = java.security.MessageDigest.getInstance("SHA-256").digest(newSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+
+            return currentHash == newHash
+        } catch (e: Exception) {
+            AsyncLogger.log(LogLevel.ERROR, "Ошибка проверки подписи APK: ${e.message}")
+            return false
         }
     }
 

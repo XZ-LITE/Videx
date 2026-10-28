@@ -58,7 +58,11 @@ object CacheManager {
                     file.deleteRecursively()
                 }
             }
-            appContext.externalCacheDir?.deleteRecursively()
+            
+            // 🛡️ БАГФИКС: Удаляем только дочерние файлы, чтобы не сломать внешние либы (Coil, ExoPlayer)
+            appContext.externalCacheDir?.listFiles()?.forEach { file ->
+                file.deleteRecursively()
+            }
             
             AsyncLogger.log(LogLevel.INFO, "Временный кэш успешно очищен (авторизация сохранена)")
             true

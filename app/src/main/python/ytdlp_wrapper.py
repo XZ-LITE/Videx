@@ -393,55 +393,49 @@ def get_video_info(url, cookie_path="", use_impersonate=False, metadata_cache_pa
             else:
                 raise imp_err
 
-        # 🧠 МГНОВЕННЫЙ СТАРТ: Сохраняем полные метаданные в JSON кэш
-        if metadata_cache_path and info:
-            try:
-                with open(metadata_cache_path, 'w', encoding='utf-8') as f:
-                    json.dump(yt_dlp.utils.sanitize_info(info), f)
-            except Exception as ce:
-                print(f"Metadata cache failed: {ce}")
+        # ⭐️ ПРОВЕРКА: ЭТО ПЛЕЙЛИСТ / АЛЬБОМ?
+        result_metadata = None
+        if info.get('_type') == 'playlist' or 'entries' in info:
+            raw_entries = info.get('entries', [])
+            entries_list = []
 
-            # ⭐️ ПРОВЕРКА: ЭТО ПЛЕЙЛИСТ / АЛЬБОМ?
-            if info.get('_type') == 'playlist' or 'entries' in info:
-                raw_entries = info.get('entries', [])
-                entries_list = []
+            for entry in raw_entries:
+                if not entry: continue
+                dur = entry.get('duration')
+                dur_str = ""
+                if dur and isinstance(dur, (int, float)):
+                    mins = int(dur // 60)
+                    secs = int(dur % 60)
+                    dur_str = f"{mins:02d}:{secs:02d}"
 
-                for entry in raw_entries:
-                    if not entry: continue
-                    dur = entry.get('duration')
-                    dur_str = ""
-                    if dur and isinstance(dur, (int, float)):
-                        mins = int(dur // 60)
-                        secs = int(dur % 60)
-                        dur_str = f"{mins:02d}:{secs:02d}"
+                v_url = entry.get('url') or entry.get('webpage_url')
+                if not v_url and entry.get('id'):
+                    v_url = f"https://www.youtube.com/watch?v={entry.get('id')}"
 
-                    v_url = entry.get('url') or entry.get('webpage_url')
-                    if not v_url and entry.get('id'):
-                        v_url = f"https://www.youtube.com/watch?v={entry.get('id')}"
+                entries_list.append({
+                    "id": str(entry.get('id') or len(entries_list)),
+                    "title": entry.get('title') or "Без названия",
+                    "url": v_url or url,
+                    "thumbnail": entry.get('thumbnail') or (entry.get('thumbnails', [{}])[0].get('url', "") if entry.get('thumbnails') else ""),
+                    "duration": dur_str,
+                    "author": entry.get('uploader') or entry.get('channel') or info.get('uploader') or ""
+                })
 
-                    entries_list.append({
-                        "id": str(entry.get('id') or len(entries_list)),
-                        "title": entry.get('title') or "Без названия",
-                        "url": v_url or url,
-                        "thumbnail": entry.get('thumbnail') or (entry.get('thumbnails', [{}])[0].get('url', "")),
-                        "duration": dur_str,
-                        "author": entry.get('uploader') or entry.get('channel') or info.get('uploader') or ""
-                    })
+            first_thumb = entries_list[0]["thumbnail"] if entries_list else ""
+            playlist_title = info.get('title') or f"Плейлист ({len(entries_list)} видео)"
 
-                first_thumb = entries_list[0]["thumbnail"] if entries_list else ""
-                playlist_title = info.get('title') or f"Плейлист ({len(entries_list)} видео)"
+            result_metadata = {
+                "status": "success",
+                "title": playlist_title,
+                "thumbnail": first_thumb,
+                "is_photo": False,
+                "is_playlist": True,
+                "playlist_entries": entries_list,
+                "available_qualities": ["1080", "720", "480", "360"],
+                "version": getattr(yt_dlp, '__version__', 'unknown')
+            }
 
-                return {
-                    "status": "success",
-                    "title": playlist_title,
-                    "thumbnail": first_thumb,
-                    "is_photo": False,
-                    "is_playlist": True,
-                    "playlist_entries": json.dumps(entries_list),
-                    "available_qualities": json.dumps(["1080", "720", "480", "360"]),
-                    "version": getattr(yt_dlp, '__version__', 'unknown')
-                }
-
+        else:
             # ОДИНОЧНОЕ ВИДЕО
             title = info.get('title', 'Без названия')
             uploader = info.get('uploader', 'Неизвестный автор')
@@ -464,16 +458,31 @@ def get_video_info(url, cookie_path="", use_impersonate=False, metadata_cache_pa
             if not available_qualities:
                 available_qualities = ["1080", "720", "480", "360"]
 
-            return {
+            result_metadata = {
                 "status": "success",
                 "title": f"{title} (Автор: {uploader})",
                 "thumbnail": thumbnail,
                 "is_photo": False,
                 "is_playlist": False,
-                "playlist_entries": "[]",
-                "available_qualities": json.dumps(available_qualities),
+                "playlist_entries": [],
+                "available_qualities": available_qualities,
                 "version": version
             }
+
+        # 🧠 МГНОВЕННЫЙ СТАРТ: Сохраняем итоговые метаданные в JSON кэш в формате, ожидаемом Kotlin-частью (AnalysisManager)
+        if metadata_cache_path and result_metadata:
+            try:
+                with open(metadata_cache_path, 'w', encoding='utf-8') as f:
+                    json.dump(result_metadata, f, ensure_ascii=False)
+            except Exception as ce:
+                print(f"Metadata cache failed: {ce}")
+
+        # Для передачи в Kotlin списки нужно перевести в json строки, как это было реализовано изначально
+        result_metadata["playlist_entries"] = json.dumps(result_metadata["playlist_entries"], ensure_ascii=False)
+        result_metadata["available_qualities"] = json.dumps(result_metadata["available_qualities"], ensure_ascii=False)
+
+        return result_metadata
+
     except Exception as e:
         return {
             "status": "error",
@@ -696,7 +705,6 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
             'progress_hooks': [progress_hook],
             'quiet': True,
             'no_warnings': True,
-            'nocheckcertificate': True,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'ios', 'mweb', 'tv'],
