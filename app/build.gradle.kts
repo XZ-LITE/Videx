@@ -96,7 +96,7 @@ chaquopy {
         if (localPython.exists()) {
             buildPython(localPython.absolutePath)
         } else {
-            buildPython("python3", "python")
+            buildPython("python3")
         }
         pip {
             install("yt-dlp")
