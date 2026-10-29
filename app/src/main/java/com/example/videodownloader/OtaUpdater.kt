@@ -94,8 +94,9 @@ object OtaUpdater {
                         if (res.isSuccessful) {
                             val sums = res.body?.string() ?: ""
                             sums.lines().forEach { line ->
-                                if (line.endsWith(expectedFileName!!)) {
-                                    expectedHash = line.substringBefore(" ").trim()
+                                val trimmed = line.trim()
+                                if (trimmed.endsWith(expectedFileName!!)) {
+                                    expectedHash = trimmed.split(Regex("\\s+"))[0]
                                 }
                             }
                         }

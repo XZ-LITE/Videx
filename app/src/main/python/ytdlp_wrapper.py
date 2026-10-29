@@ -29,9 +29,10 @@ def set_custom_core_path(zip_path):
         import importlib
         importlib.invalidate_caches()
 
-        # Если ядро уже было загружено, удаляем его из кэша модулей
-        if "yt_dlp" in sys.modules:
-            del sys.modules["yt_dlp"]
+        # Если ядро уже было загружено, полностью удаляем его и все подмодули из кэша
+        to_delete = [mod for mod in sys.modules if mod == "yt_dlp" or mod.startswith("yt_dlp.")]
+        for mod in to_delete:
+            del sys.modules[mod]
 
         global YT_DLP_CORE
         YT_DLP_CORE = None # Сбросим прогретый инстанс
