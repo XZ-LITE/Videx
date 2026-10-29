@@ -10,3 +10,7 @@
 local.properties
 /website
 /.artifacts/
+*.keystore
+*.jks
+*.p12
+*.pepk
