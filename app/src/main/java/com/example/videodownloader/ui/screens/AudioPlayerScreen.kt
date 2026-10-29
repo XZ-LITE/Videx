@@ -367,8 +367,10 @@ fun AudioPlayerScreen(
             try {
                 notificationManager.cancel(2002)
             } catch (_: Exception) {}
-            // 🛡️ БАГФИКС: Не освобождаем ExoPlayer и MediaSession при закрытии экрана,
-            // чтобы музыка продолжала играть в фоне через PlaybackService!
+            // 🛡️ БАГФИКС: Раскомментировано освобождение ресурсов. 
+            // Это предотвращает наложение звуков и создание множества экземпляров плеера при навигации!
+            mediaSession.release()
+            exoPlayer.release()
         }
     }
 

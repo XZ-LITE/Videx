@@ -374,7 +374,12 @@ object YtDlpBridge {
                         )
 
                         if (firstSavedFile == null) firstSavedFile = File(savedUriOrPath)
-                        srcFile.delete()
+
+                        // 🛡️ БАГФИКС: Удаляем файл srcFile ТОЛЬКО ЕСЛИ он был скачан в приватный кэш (при customUri != null, outputDir лежит в cacheDir).
+                        // Иначе он уже лежит в нужной публичной папке, и удалять его нельзя!
+                        if (srcFile.absolutePath.contains("/cache/downloads_temp/")) {
+                            srcFile.delete()
+                        }
 
                         val cleanHistoryName = cleanFileNameForHistory(srcFile.nameWithoutExtension)
 
@@ -467,6 +472,15 @@ object YtDlpBridge {
                 ?: throw Exception("Не удалось создать запись в MediaStore")
 
             try {
+                // Если файл уже лежит там (мы качали его напрямую) — просто обновляем IS_PENDING = 0
+                if (!srcFile.absolutePath.contains("/cache/downloads_temp/")) {
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    context.contentResolver.update(itemUri, contentValues, null, null)
+                    return itemUri.toString()
+                }
+
+                // Иначе — копируем из временного кэша
                 context.contentResolver.openOutputStream(itemUri)?.use { out ->
                     FileInputStream(srcFile).use { input ->
                         input.copyTo(out, bufferSize = BUFFER_SIZE)

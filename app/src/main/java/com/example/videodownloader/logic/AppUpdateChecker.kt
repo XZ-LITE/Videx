@@ -304,18 +304,39 @@ object AppUpdateChecker {
     private fun verifyApkSignature(context: Context, apkFile: File): Boolean {
         try {
             val pm = context.packageManager
-            val packageInfo = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES) ?: return false
-            val currentPackageInfo = pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // Android 9+ (API 28+): Используем GET_SIGNING_CERTIFICATES для v2/v3 подписей
+                val packageInfo = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES) ?: return false
+                val currentPackageInfo = pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                
+                val currentSignatures = currentPackageInfo.signingInfo?.apkContentsSigners
+                val newSignatures = packageInfo.signingInfo?.apkContentsSigners
+                
+                if (currentSignatures.isNullOrEmpty() || newSignatures.isNullOrEmpty()) return false
+                
+                val currentHash = java.security.MessageDigest.getInstance("SHA-256").digest(currentSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+                val newHash = java.security.MessageDigest.getInstance("SHA-256").digest(newSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+                return currentHash == newHash
+            } else {
+                // Старые версии Android (API < 28)
+                @Suppress("DEPRECATION")
+                val packageInfo = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES) ?: return false
+                @Suppress("DEPRECATION")
+                val currentPackageInfo = pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
 
-            val currentSignatures = currentPackageInfo.signatures
-            val newSignatures = packageInfo.signatures
+                @Suppress("DEPRECATION")
+                val currentSignatures = currentPackageInfo.signatures
+                @Suppress("DEPRECATION")
+                val newSignatures = packageInfo.signatures
 
-            if (currentSignatures.isNullOrEmpty() || newSignatures.isNullOrEmpty()) return false
+                if (currentSignatures.isNullOrEmpty() || newSignatures.isNullOrEmpty()) return false
 
-            val currentHash = java.security.MessageDigest.getInstance("SHA-256").digest(currentSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
-            val newHash = java.security.MessageDigest.getInstance("SHA-256").digest(newSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+                val currentHash = java.security.MessageDigest.getInstance("SHA-256").digest(currentSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
+                val newHash = java.security.MessageDigest.getInstance("SHA-256").digest(newSignatures[0].toByteArray()).joinToString("") { "%02x".format(it) }
 
-            return currentHash == newHash
+                return currentHash == newHash
+            }
         } catch (e: Exception) {
             AsyncLogger.log(LogLevel.ERROR, "Ошибка проверки подписи APK: ${e.message}")
             return false
