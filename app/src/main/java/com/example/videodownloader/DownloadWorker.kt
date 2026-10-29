@@ -194,7 +194,7 @@ class DownloadWorker(
             "VideoDownloader:DownloadWakeLock"
         )?.apply {
             setReferenceCounted(false)
-            acquire(30 * 60 * 1000L) // 30 минут максимум согласно Android Best Practices
+            acquire(60 * 60 * 1000L) // 60 минут (совпадает с таймаутом сетевой корутины)
         }
 
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
@@ -262,13 +262,6 @@ class DownloadWorker(
                             SettingsManager.updateAvgSpeed(speed, isWifi)
                         }
 
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val status = PerformanceManager.thermalStatus.value
-                            if (status >= PowerManager.THERMAL_STATUS_SEVERE) {
-                                Thread.sleep(200)
-                            }
-                        }
-
                         if (currentTime - lastUpdateTime >= 1200 || progress == 100) {
                             if (progress != lastProgress || currentTime - lastUpdateTime >= 2000) {
                                 lastProgress = progress
@@ -306,6 +299,7 @@ class DownloadWorker(
             if (downloadResult != null && downloadResult.isSuccess) {
                 AsyncLogger.log(LogLevel.INFO, "DownloadWorker: Загрузка успешно завершена!")
                 notificationManager.cancel(currentNotifId)
+                SettingsManager.flushAvgSpeedToDisk()
 
                 val isBatchIntent = inputData.getBoolean(KEY_IS_BATCH, false)
                 val isAutopilot = inputData.getBoolean(KEY_IS_AUTOPILOT, false)

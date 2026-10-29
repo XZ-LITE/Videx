@@ -747,6 +747,46 @@ object HistoryManager {
         }
     }
 
+    private data class ExtractedMediaInfo(val durationMs: Long, val localThumbPath: String?)
+
+    private fun extractMediaInfo(context: Context, pathOrUri: String, mediaType: MediaType): ExtractedMediaInfo {
+        if (mediaType == MediaType.PHOTO) return ExtractedMediaInfo(0L, null)
+
+        val retriever = MediaMetadataRetriever()
+        return try {
+            if (pathOrUri.startsWith("content://")) {
+                retriever.setDataSource(context, Uri.parse(pathOrUri))
+            } else {
+                retriever.setDataSource(pathOrUri)
+            }
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+
+            var thumbPath: String? = null
+            if (mediaType == MediaType.VIDEO) {
+                try {
+                    val frameBitmap = retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        ?: retriever.getFrameAtTime()
+                    if (frameBitmap != null) {
+                        val thumbDir = File(context.filesDir, "thumbnails").apply { if (!exists()) mkdirs() }
+                        val thumbFile = File(thumbDir, "thumb_${UUID.randomUUID().toString().take(12)}.jpg")
+                        FileOutputStream(thumbFile).use { out ->
+                            frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                        frameBitmap.recycle()
+                        if (thumbFile.exists() && thumbFile.length() > 0) {
+                            thumbPath = thumbFile.absolutePath
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+            ExtractedMediaInfo(duration, thumbPath)
+        } catch (_: Exception) {
+            ExtractedMediaInfo(0L, null)
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+    }
+
     private fun getMediaDuration(context: Context, pathOrUri: String): Long {
         val retriever = MediaMetadataRetriever()
         return try {
@@ -794,14 +834,22 @@ object HistoryManager {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path + "/Videx",
         )
 
-        // Добавляем пользовательский каталог из Настроек
+        // Добавляем пользовательский каталог из Настроек (с поддержкой основной памяти, SD-карт и OTG накопителей)
         val customUri = SettingsManager.getCustomDirUri()
         if (customUri != null) {
             try {
                 val p = customUri.path
-                if (!p.isNullOrBlank() && p.contains("primary:")) {
-                    val localPath = Environment.getExternalStorageDirectory().absolutePath + "/" + p.substringAfter("primary:")
-                    if (!folders.contains(localPath)) {
+                if (!p.isNullOrBlank()) {
+                    val localPath = when {
+                        p.contains("primary:") -> Environment.getExternalStorageDirectory().absolutePath + "/" + p.substringAfter("primary:")
+                        p.contains(":") -> {
+                            val volume = p.substringAfter("tree/").substringBefore(":").substringAfterLast("/")
+                            val relative = p.substringAfter(":")
+                            "/storage/$volume/$relative"
+                        }
+                        else -> p
+                    }
+                    if (localPath.isNotBlank() && !folders.contains(localPath)) {
                         folders.add(localPath)
                     }
                 }
@@ -831,7 +879,9 @@ object HistoryManager {
                     }
 
                     val size = file.length()
-                    val duration = if (mediaType != MediaType.PHOTO) getMediaDuration(appContext, file.absolutePath) else 0L
+                    // ⚡ ОПТИМИЗАЦИЯ: Извлекаем длительность и обложку за ОДИН проход через MediaMetadataRetriever
+                    val mediaInfo = extractMediaInfo(appContext, file.absolutePath, mediaType)
+                    val duration = mediaInfo.durationMs
                     val fingerprintByMeta = "${size}_$duration"
                     
                     // 🧠 Защита от дублей исцеления: забираем потерянный файл из списка, чтобы не исцелить им дважды
@@ -854,11 +904,6 @@ object HistoryManager {
                         // 🛡️ Защита от дублей сканирования: добавляем в отпечатки сразу же
                         if (!existingFingerprints.contains(nameFingerprint)) {
                             existingFingerprints.add(nameFingerprint)
-                            
-                            // Кэшируем превью-кадр для найденного видеофайла
-                            val localThumb = if (mediaType == MediaType.VIDEO) {
-                                cacheThumbnailLocally(appContext, file.absolutePath, mediaType, null)
-                            } else null
 
                             foundItems.add(
                                 DownloadedFileItem(
@@ -870,7 +915,7 @@ object HistoryManager {
                                     dateFormatted = dateFormat.format(Date(file.lastModified())),
                                     mediaType = mediaType,
                                     durationMs = duration,
-                                    thumbnailUrl = localThumb,
+                                    thumbnailUrl = mediaInfo.localThumbPath,
                                     timestamp = file.lastModified(),
                                 )
                             )

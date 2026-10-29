@@ -936,13 +936,19 @@ object SettingsManager {
             val current = _avgSpeedWifi.value
             val updated = ((current * 0.8) + (newSpeedBps * 0.2)).toLong()
             _avgSpeedWifi.value = updated
-            prefs?.edit()?.putLong(KEY_AVG_SPEED_WIFI, updated)?.apply()
+            // 🛡️ ОПТИМИЗАЦИЯ: Обновляем только StateFlow в оперативной памяти, избегая ANR от постоянных prefs.apply()
         } else {
             val current = _avgSpeedMobile.value
             val updated = ((current * 0.8) + (newSpeedBps * 0.2)).toLong()
             _avgSpeedMobile.value = updated
-            prefs?.edit()?.putLong(KEY_AVG_SPEED_MOBILE, updated)?.apply()
         }
+    }
+
+    fun flushAvgSpeedToDisk() {
+        prefs?.edit()?.apply {
+            putLong(KEY_AVG_SPEED_WIFI, _avgSpeedWifi.value)
+            putLong(KEY_AVG_SPEED_MOBILE, _avgSpeedMobile.value)
+        }?.apply()
     }
 }
 
