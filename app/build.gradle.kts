@@ -1,4 +1,4 @@
-import java.net.URL
+import java.net.URI
 import java.io.FileOutputStream
 import java.io.FileInputStream
 import java.util.zip.GZIPInputStream
@@ -91,7 +91,12 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.13"
-        buildPython("C:/Users/XZ_L1TE/AppData/Local/Programs/Python/Python313/python.exe")
+        val localPython = file("C:/Users/XZ_L1TE/AppData/Local/Programs/Python/Python313/python.exe")
+        if (localPython.exists()) {
+            buildPython(localPython.absolutePath)
+        } else {
+            buildPython("python3", "python")
+        }
         pip {
             install("yt-dlp")
             install("requests")
@@ -171,7 +176,7 @@ tasks.register("downloadFFmpeg") {
         val expectedArmHash = "6BB182D0D75D23028DB82E9E4F723CA69B853D055698486E6984DDB2C06FB8CE"
         if (!armFile.exists()) {
             println("Downloading FFmpeg for arm64...")
-            URL("https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-arm64.gz").openStream().use { input ->
+            URI("https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-arm64.gz").toURL().openStream().use { input ->
                 GZIPInputStream(input).use { gzInput ->
                     FileOutputStream(armFile).use { output ->
                         gzInput.copyTo(output)
@@ -185,7 +190,7 @@ tasks.register("downloadFFmpeg") {
         val expectedX86Hash = "E7E7FB30477F717E6F55F9180A70386C62677EF8A4D4D1A5D948F4098AA3EB99"
         if (!x86File.exists()) {
             println("Downloading FFmpeg for x86_64...")
-            URL("https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz").openStream().use { input ->
+            URI("https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz").toURL().openStream().use { input ->
                 GZIPInputStream(input).use { gzInput ->
                     FileOutputStream(x86File).use { output ->
                         gzInput.copyTo(output)
