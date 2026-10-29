@@ -205,11 +205,30 @@ object YtDlpBridge {
         onProgress: (percent: Int, speedBytes: Long, etaSeconds: Long) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        // 🔒 ИЗОЛЯЦИЯ: Создаем уникальную папку сессии для безопасных параллельных загрузок
+        val customUri = SettingsManager.getCustomDirUri()
+        val saveToGallery = SettingsManager.saveToGallery.value
+
+        val mediaType = when {
+            isAudioOnly -> MediaType.AUDIO
+            else -> MediaType.VIDEO
+        }
+
+        // ⚡ ПРЯМОЕ СКАЧИВАНИЕ: Определяем целевую папку заранее.
+        // Для стандартных загрузок скачиваем СРАЗУ в целевую папку без промежуточной перезаписи байтов!
         val sessionCacheId = java.util.UUID.randomUUID().toString()
-        val cacheDir = File(appContext.cacheDir, "downloads_temp/$sessionCacheId")
+        val outputDir: File = if (customUri == null) {
+            val relativeDir = when {
+                !saveToGallery -> Environment.DIRECTORY_DOWNLOADS + "/Videx"
+                mediaType == MediaType.AUDIO -> Environment.DIRECTORY_MUSIC + "/Videx"
+                else -> Environment.DIRECTORY_MOVIES + "/Videx"
+            }
+            File(Environment.getExternalStorageDirectory(), relativeDir).apply { mkdirs() }
+        } else {
+            File(appContext.cacheDir, "downloads_temp/$sessionCacheId").apply { mkdirs() }
+        }
+
         try {
-            cacheDir.mkdirs()
+            outputDir.mkdirs()
             val py = Python.getInstance()
             val module = py.getModule("ytdlp_wrapper")
             ensureCustomCore(appContext, module)
@@ -234,7 +253,7 @@ object YtDlpBridge {
             val pyResult = module.callAttr(
                 "download_video",
                 url,
-                cacheDir.absolutePath,
+                outputDir.absolutePath,
                 listener,
                 isAudioOnly,
                 quality,
@@ -372,7 +391,7 @@ object YtDlpBridge {
                 }
 
                 AsyncLogger.log(LogLevel.INFO, "Успешно сохранено файлов: ${downloadedFiles.size}")
-                Result.success(firstSavedFile ?: File(cacheDir, "done"))
+                Result.success(firstSavedFile ?: File(outputDir, "done"))
             } else {
                 val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Неизвестная ошибка"
                 AsyncLogger.log(LogLevel.ERROR, "Ошибка при скачивании: $err")
@@ -392,8 +411,8 @@ object YtDlpBridge {
             Result.failure(e)
         } finally {
             try {
-                if (cacheDir.exists()) {
-                    cacheDir.deleteRecursively()
+                if (customUri != null && outputDir.exists()) {
+                    outputDir.deleteRecursively()
                 }
             } catch (e: Exception) {
                 AsyncLogger.log(LogLevel.WARN, "Ошибка очистки кэша сессии: ${e.message}")
@@ -408,6 +427,20 @@ object YtDlpBridge {
         mediaType: MediaType,
         saveToGallery: Boolean
     ): String {
+        // ⚡ ПРЯМОЕ СКАЧИВАНИЕ: Если файл уже скачан прямо в целевую папку (/Videx) — мгновенно индексируем в MediaStore без копирования!
+        val parentPath = srcFile.parentFile?.absolutePath ?: ""
+        if (parentPath.contains("/Videx") && !parentPath.contains("/cache/")) {
+            try {
+                android.media.MediaScannerConnection.scanFile(
+                    context,
+                    arrayOf(srcFile.absolutePath),
+                    arrayOf(mimeType),
+                    null
+                )
+            } catch (_: Exception) {}
+            return srcFile.absolutePath
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, srcFile.name)
