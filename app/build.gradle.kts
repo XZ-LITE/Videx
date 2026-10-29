@@ -1,4 +1,5 @@
 import java.net.URI
+import java.io.File
 import java.io.FileOutputStream
 import java.io.FileInputStream
 import java.util.zip.GZIPInputStream
@@ -91,7 +92,7 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.13"
-        val localPython = file("C:/Users/XZ_L1TE/AppData/Local/Programs/Python/Python313/python.exe")
+        val localPython = File("C:/Users/XZ_L1TE/AppData/Local/Programs/Python/Python313/python.exe")
         if (localPython.exists()) {
             buildPython(localPython.absolutePath)
         } else {
