@@ -20,8 +20,8 @@ android {
         applicationId = "com.example.videodownloader"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "1.1.9"
+        versionCode = 23
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
