@@ -105,10 +105,29 @@ class DownloadWorker(
         val currentNotifId = NOTIFICATION_ID + slot
 
         createNotificationChannel()
-
+        
+        // ⚡ ОПТИМИЗАЦИЯ: Мгновенный показ прогресс-уведомления со стартовым состоянием (0%)
+        // до запуска любых проверок и сетевых запросов!
         try {
-            setForeground(createForegroundInfo(currentNotifId, title, 0, 0, 0))
+            val instantNotification = buildProgressNotification(title, 0, 0L, 0L)
+            
+            val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ForegroundInfo(currentNotifId, instantNotification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                ForegroundInfo(currentNotifId, instantNotification)
+            }
+            
+            setForeground(foregroundInfo)
             showGroupSummaryNotification(GROUP_KEY_DOWNLOADS, SUMMARY_ID_DOWNLOADS)
+            
+            // Также мгновенно обновляем стейт в UI карточек
+            setProgressAsync(
+                workDataOf(
+                    KEY_PROGRESS to 0,
+                    KEY_TITLE to title,
+                    KEY_URL to url
+                )
+            )
         } catch (e: Exception) {
             AsyncLogger.log(LogLevel.WARN, "Foreground info warning: ${e.message}")
         }
@@ -345,15 +364,6 @@ class DownloadWorker(
             if (isStopped) {
                 notificationManager.cancel(currentNotifId)
             }
-        }
-    }
-
-    private fun createForegroundInfo(notifId: Int, title: String, progress: Int, speed: Long, eta: Long): ForegroundInfo {
-        val notification = buildProgressNotification(title, progress, speed, eta)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(notifId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            ForegroundInfo(notifId, notification)
         }
     }
 
