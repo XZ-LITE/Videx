@@ -213,27 +213,12 @@ object YtDlpBridge {
         onProgress: (percent: Int, speedBytes: Long, etaSeconds: Long) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        val customUri = SettingsManager.getCustomDirUri()
-        val saveToGallery = SettingsManager.saveToGallery.value
 
-        val mediaType = when {
-            isAudioOnly -> MediaType.AUDIO
-            else -> MediaType.VIDEO
-        }
-
-        // ⚡ ПРЯМОЕ СКАЧИВАНИЕ: Определяем целевую папку заранее.
-        // Для стандартных загрузок скачиваем СРАЗУ в целевую папку без промежуточной перезаписи байтов!
+        // 🛡️ СКАЧИВАНИЕ ВО ВНУТРЕННИЙ КЭШ: На Android 10+ (API 29-36) прямое создание файлов Python/POSIX
+        // в публичных папках (/storage/emulated/0/...) вызывает [Errno 1] Operation not permitted.
+        // Поэтому Python качает файлы во внутренний приватный кэш приложения, а затем Kotlin экспортирует их через MediaStore/SAF.
         val sessionCacheId = java.util.UUID.randomUUID().toString()
-        val outputDir: File = if (customUri == null) {
-            val relativeDir = when {
-                !saveToGallery -> Environment.DIRECTORY_DOWNLOADS + "/Videx"
-                mediaType == MediaType.AUDIO -> Environment.DIRECTORY_MUSIC + "/Videx"
-                else -> Environment.DIRECTORY_MOVIES + "/Videx"
-            }
-            File(Environment.getExternalStorageDirectory(), relativeDir).apply { mkdirs() }
-        } else {
-            File(appContext.cacheDir, "downloads_temp/$sessionCacheId").apply { mkdirs() }
-        }
+        val outputDir = File(appContext.cacheDir, "downloads_temp/$sessionCacheId").apply { mkdirs() }
 
         try {
             outputDir.mkdirs()
@@ -423,7 +408,7 @@ object YtDlpBridge {
             Result.failure(e)
         } finally {
             try {
-                if (customUri != null && outputDir.exists()) {
+                if (outputDir.exists()) {
                     outputDir.deleteRecursively()
                 }
             } catch (e: Exception) {
