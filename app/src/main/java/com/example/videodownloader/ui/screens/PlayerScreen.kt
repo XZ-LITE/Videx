@@ -896,9 +896,9 @@ private fun SeekVisualFeedback(
                         Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(38.dp))
                         Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
                     } else {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp).graphicsLayer(rotationZ = 180f))
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(38.dp).graphicsLayer(rotationZ = 180f))
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(38.dp).graphicsLayer(rotationZ = 180f))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp).graphicsLayer(scaleX = -1f))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(38.dp).graphicsLayer(scaleX = -1f))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(38.dp).graphicsLayer(scaleX = -1f))
                     }
                 }
                 
