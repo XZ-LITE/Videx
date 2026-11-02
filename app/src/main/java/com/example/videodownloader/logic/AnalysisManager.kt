@@ -173,12 +173,12 @@ object AnalysisManager {
 
                 if (result != null) {
                     if (result.isSuccess) {
-                        val meta = result.getOrNull()!!
+                        val meta = result.getOrNull() ?: return@launch
                         
                         // Сохраняем в кэш
                         analysisCache[targetUrl] = meta to System.currentTimeMillis()
                         if (analysisCache.size > 5) {
-                            analysisCache.remove(analysisCache.keys.first())
+                            analysisCache.keys.firstOrNull()?.let { analysisCache.remove(it) }
                         }
 
                         applyMetadata(meta)

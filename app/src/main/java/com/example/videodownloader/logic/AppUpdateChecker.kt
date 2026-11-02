@@ -110,7 +110,15 @@ object AppUpdateChecker {
             )
         } catch (e: Exception) {
             val userMsg = com.example.videodownloader.utils.translateNetworkError(e.message, "Не удалось проверить обновления")
-            AsyncLogger.log(LogLevel.ERROR, "AppUpdateChecker error: ${e.message}")
+            val isOffline = e is java.net.UnknownHostException ||
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true ||
+                e.message?.contains("Отсутствует подключение", ignoreCase = true) == true
+
+            if (isOffline) {
+                AsyncLogger.log(LogLevel.WARN, "AppUpdateChecker: $userMsg")
+            } else {
+                AsyncLogger.log(LogLevel.ERROR, "AppUpdateChecker error: ${e.message}")
+            }
             Result.failure(Exception(userMsg))
         }
     }

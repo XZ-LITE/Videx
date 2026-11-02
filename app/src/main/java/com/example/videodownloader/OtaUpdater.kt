@@ -87,7 +87,8 @@ object OtaUpdater {
 
             // Получаем SHA-256 хэш, если доступен
             var expectedHash: String? = null
-            if (checksumUrl != null && expectedFileName != null) {
+            val targetName = expectedFileName
+            if (checksumUrl != null && targetName != null) {
                 try {
                     val req = Request.Builder().url(checksumUrl).build()
                     httpClient.newCall(req).execute().use { res ->
@@ -95,7 +96,7 @@ object OtaUpdater {
                             val sums = res.body?.string() ?: ""
                             sums.lines().forEach { line ->
                                 val trimmed = line.trim()
-                                if (trimmed.endsWith(expectedFileName!!)) {
+                                if (trimmed.endsWith(targetName)) {
                                     expectedHash = trimmed.split(Regex("\\s+"))[0]
                                 }
                             }
@@ -172,22 +173,27 @@ object OtaUpdater {
             val module = py.getModule("ytdlp_wrapper")
             val pyResult = module.callAttr("set_custom_core_path", targetFile.absolutePath)
             
-            // Используем прямое приведение к Map<String, PyObject> через Chaquopy, 
-            // либо безопасное извлечение значения по строковому ключу
-            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
-                ?: pyResult.callAttr("get", "status")?.toString()
+            val status = YtDlpBridge.getPyDictString(pyResult, "status")
 
             if (status == "success") {
                 AsyncLogger.log(LogLevel.INFO, "OTA: Ядро успешно обновлено до $latestVersion!")
                 Result.success(latestVersion)
             } else {
-                val errorMsg = pyResult.callAttr("get", "error_msg")?.toString() ?: "Неизвестная ошибка Python"
+                val errorMsg = YtDlpBridge.getPyDictString(pyResult, "error_msg") ?: "Неизвестная ошибка Python"
                 throw Exception("Python не смог подключить новый путь к ядру: $errorMsg")
             }
 
         } catch (e: Exception) {
             val userMsg = com.example.videodownloader.utils.translateNetworkError(e.message, "Ошибка обновления ядра")
-            AsyncLogger.log(LogLevel.ERROR, "OTA Ошибка: ${e.message}")
+            val isOffline = e is java.net.UnknownHostException ||
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true ||
+                e.message?.contains("Отсутствует подключение", ignoreCase = true) == true
+
+            if (isOffline) {
+                AsyncLogger.log(LogLevel.WARN, "OTA: $userMsg")
+            } else {
+                AsyncLogger.log(LogLevel.ERROR, "OTA Ошибка: ${e.message}")
+            }
             Result.failure(Exception(userMsg))
         }
     }

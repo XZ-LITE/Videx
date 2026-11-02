@@ -55,6 +55,16 @@ object YtDlpBridge {
     
     fun isReady(): Boolean = isPythonReady
 
+    fun getPyDictString(pyObj: com.chaquo.python.PyObject?, key: String): String? {
+        if (pyObj == null) return null
+        return try {
+            val valObj = pyObj.callAttr("get", key)
+            if (valObj == null || valObj.toString() == "None") null else valObj.toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /**
      * ⭐️ Умный прогрев Python в фоновом потоке с низким приоритетом CPU.
      * Вызывается с задержкой после запуска UI, чтобы не создавать лагов и фризов при старте.
@@ -85,14 +95,13 @@ object YtDlpBridge {
                 
                 // 4. Выполняем фоновый предзагруз
                 val pyResult = module.callAttr("pre_load")
-                val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
-                    ?: pyResult.callAttr("get", "status")?.toString()
+                val status = getPyDictString(pyResult, "status")
                 
                 if ((status == "success") || (status == "already_warm")) {
                     isPythonReady = true
                     AsyncLogger.log(LogLevel.INFO, "Python: Движок полностью прогрет и yt-dlp загружен.")
                 } else {
-                    val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Unknown error"
+                    val err = getPyDictString(pyResult, "error_msg") ?: "Unknown error"
                     throw Exception(err)
                 }
             } catch (e: Exception) {
@@ -134,8 +143,7 @@ object YtDlpBridge {
             val pyResult = timedResult
             
             // Безопасное извлечение полей без asMap() и py.builtins, обход багов Chaquopy с ключами PyObject
-            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
-                ?: pyResult.callAttr("get", "status")?.toString()
+            val status = getPyDictString(pyResult, "status")
 
             if (status == "success") {
                 val title = pyResult.callAttr("get", "title")?.toString() ?: "Без названия"
@@ -269,8 +277,7 @@ object YtDlpBridge {
             )
 
             // Безопасное извлечение полей без py.builtins
-            val status = pyResult.asMap()[pyResult.toJava(Map::class.java).keys.firstOrNull { it.toString() == "status" }]?.toString() 
-                ?: pyResult.callAttr("get", "status")?.toString()
+            val status = getPyDictString(pyResult, "status")
 
             if (status == "cancelled") {
                 AsyncLogger.log(LogLevel.INFO, "Загрузка отменена")
