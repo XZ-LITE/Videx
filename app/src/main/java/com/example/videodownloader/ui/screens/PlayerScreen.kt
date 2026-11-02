@@ -307,7 +307,11 @@ fun PlayerScreen(
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED) {
+                if (playbackState == Player.STATE_READY) {
+                    duration = exoPlayer.duration.coerceAtLeast(0L)
+                    isTrackSwitching = false
+                }
+                if (playbackState == Player.STATE_ENDED) {
                     isTrackSwitching = false
                 }
             }
