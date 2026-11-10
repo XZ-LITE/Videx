@@ -296,11 +296,14 @@ fun LogViewerScreen(snackbarHostState: SnackbarHostState, onBack: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // КНОПКА 1: СКОПИРОВАТЬ ОТЧЕТ
+                // КНОПКА 1: СКОПИРОВАТЬ ОТЧЕТ В БУФЕР ОБМЕНА
                 Button(
                     onClick = {
-                        exportSmartDiagnosticReport(context, logs)
+                        val reportText = com.example.videodownloader.utils.buildDiagnosticReportText(context, logs)
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Videx Diagnostic Report", reportText))
                         showShareDialog = false
+                        coroutineScope.launch { snackbarHostState.showSnackbar("Диагностический отчёт скопирован в буфер") }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -316,7 +319,7 @@ fun LogViewerScreen(snackbarHostState: SnackbarHostState, onBack: () -> Unit) {
                 // КНОПКА 2: ПОДЕЛИТЬСЯ ФАЙЛОМ
                 OutlinedButton(
                     onClick = {
-                        exportAndShareLogs(context, logs, "Full")
+                        exportSmartDiagnosticReport(context, logs)
                         showShareDialog = false
                     },
                     modifier = Modifier

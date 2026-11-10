@@ -206,8 +206,10 @@ fun GalleryScreen(
                             if (abs(offsetY.value) > screenHeight / 6f) {
                                 coroutineScope.launch {
                                     val exitY = if (offsetY.value > 0) screenHeight else -screenHeight
-                                    launch { offsetY.animateTo(exitY, tween(250)) }
-                                    launch { backgroundAlpha.animateTo(0f, tween(200)) }
+                                    val animY = launch { offsetY.animateTo(exitY, tween(250)) }
+                                    val animAlpha = launch { backgroundAlpha.animateTo(0f, tween(200)) }
+                                    animY.join()
+                                    animAlpha.join()
                                     onBack()
                                 }
                             } else coroutineScope.launch { resetTransforms(); isSwipingToDismiss = false }
