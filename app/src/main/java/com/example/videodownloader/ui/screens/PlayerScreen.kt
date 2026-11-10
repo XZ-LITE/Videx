@@ -280,7 +280,16 @@ fun PlayerScreen(
         }
     }
 
-    // Обновление позиции воспроизведения вынесено в BottomPlayerControls, чтобы не рекомпозировать весь экран!
+    // 🛡️ Гарантированное фоновое обновление длительности видео
+    LaunchedEffect(exoPlayer) {
+        while (isActive) {
+            val d = exoPlayer.duration
+            if (d > 0L && d != duration) {
+                duration = d
+            }
+            delay(400.milliseconds)
+        }
+    }
 
     LaunchedEffect(exoPlayer) {
         mainActivity?.pipCommands?.collect { type ->
@@ -1131,17 +1140,20 @@ fun BottomPlayerControls(
     onDragEnd: (Float) -> Unit,
     onInteraction: () -> Unit = {}
 ) {
+    val effectiveDuration = if (duration > 0) duration else exoPlayer.duration.coerceAtLeast(0L)
+
     var currentPos by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var localSliderValue by remember {
-        mutableFloatStateOf(if (duration > 0) (currentPos.toFloat() / duration).coerceIn(0f, 1f) else 0f)
+        mutableFloatStateOf(if (effectiveDuration > 0) (currentPos.toFloat() / effectiveDuration).coerceIn(0f, 1f) else 0f)
     }
 
     LaunchedEffect(exoPlayer, duration, isDragging) {
         while (isActive) {
             if (!isDragging) {
                 currentPos = exoPlayer.currentPosition
-                if (duration > 0) {
-                    localSliderValue = (currentPos.toFloat() / duration).coerceIn(0f, 1f)
+                val currentDur = if (duration > 0) duration else exoPlayer.duration.coerceAtLeast(0L)
+                if (currentDur > 0) {
+                    localSliderValue = (currentPos.toFloat() / currentDur).coerceIn(0f, 1f)
                 }
             }
             delay(200)
@@ -1173,7 +1185,7 @@ fun BottomPlayerControls(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentPosForText = if (isDragging) (localSliderValue * duration).toLong() else currentPos
+                    val currentPosForText = if (isDragging) (localSliderValue * effectiveDuration).toLong() else currentPos
                     Text(
                         text = formatTime(currentPosForText),
                         color = Color.White.copy(alpha = 0.9f),
@@ -1201,7 +1213,7 @@ fun BottomPlayerControls(
                     )
 
                     Text(
-                        text = formatTime(duration),
+                        text = formatTime(effectiveDuration),
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
@@ -1312,7 +1324,7 @@ fun BottomPlayerControls(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentPosForText = if (isDragging) (localSliderValue * duration).toLong() else currentPos
+                    val currentPosForText = if (isDragging) (localSliderValue * effectiveDuration).toLong() else currentPos
                     Text(
                         text = formatTime(currentPosForText),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1340,7 +1352,7 @@ fun BottomPlayerControls(
                     )
 
                     Text(
-                        text = formatTime(duration),
+                        text = formatTime(effectiveDuration),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium,
