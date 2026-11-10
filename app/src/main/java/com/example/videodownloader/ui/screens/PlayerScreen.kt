@@ -326,7 +326,12 @@ fun PlayerScreen(
                 mediaItem?.mediaId?.let { id ->
                     if (id.isNotBlank()) currentTrackId = id
                 }
-                isTrackSwitching = true
+                if (exoPlayer.playbackState == Player.STATE_READY) {
+                    duration = exoPlayer.duration.coerceAtLeast(0L)
+                    isTrackSwitching = false
+                } else {
+                    isTrackSwitching = true
+                }
             }
         }
         exoPlayer.addListener(listener)
@@ -516,7 +521,7 @@ fun PlayerScreen(
                                         activity?.window?.attributes = lp
                                     } else {
                                         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (newValue * max).toInt(), 0)
+                                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (newValue * max).kotlin.math.roundToInt(), 0)
                                     }
                                     nextDrag.consume()
                                 }
