@@ -296,14 +296,11 @@ fun LogViewerScreen(snackbarHostState: SnackbarHostState, onBack: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // КНОПКА 1: СКОПИРОВАТЬ ОТЧЕТ В БУФЕР ОБМЕНА
+                // КНОПКА 1: ПОДЕЛИТЬСЯ ДИАГНОСТИЧЕСКИМ ОТЧЕТОМ (ФАЙЛОМ)
                 Button(
                     onClick = {
-                        val reportText = com.example.videodownloader.utils.buildDiagnosticReportText(context, logs)
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Videx Diagnostic Report", reportText))
+                        exportSmartDiagnosticReport(context, logs)
                         showShareDialog = false
-                        coroutineScope.launch { snackbarHostState.showSnackbar("Диагностический отчёт скопирован в буфер") }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -311,15 +308,15 @@ fun LogViewerScreen(snackbarHostState: SnackbarHostState, onBack: () -> Unit) {
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Скопировать готовый отчёт", fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
+                    Text("Поделиться отчётом разработчику", fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
                 }
 
-                // КНОПКА 2: ПОДЕЛИТЬСЯ ФАЙЛОМ
+                // КНОПКА 2: ПОДЕЛИТЬСЯ ВСЕМИ ЛОГАМИ
                 OutlinedButton(
                     onClick = {
-                        exportSmartDiagnosticReport(context, logs)
+                        exportAndShareLogs(context, logs, "Full")
                         showShareDialog = false
                     },
                     modifier = Modifier
