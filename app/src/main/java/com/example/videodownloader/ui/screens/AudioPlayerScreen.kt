@@ -246,13 +246,14 @@ fun AudioPlayerScreen(
         label = "AppleMusicCoverScale"
     )
 
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
+    LaunchedEffect(exoPlayer) {
+        while (isActive) {
             if (!isDragging) {
-                position = exoPlayer.currentPosition
-                duration = exoPlayer.duration.coerceAtLeast(0L)
+                position = exoPlayer.currentPosition.coerceAtLeast(0L)
+                val d = exoPlayer.duration
+                if (d > 0L) duration = d
             }
-            delay(500.milliseconds)
+            delay(300.milliseconds)
         }
     }
 
@@ -343,6 +344,13 @@ fun AudioPlayerScreen(
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 updateSystemMediaNotification(playing, currentItem)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) {
+                    val d = exoPlayer.duration
+                    if (d > 0L) duration = d
+                }
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {

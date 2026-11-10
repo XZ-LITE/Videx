@@ -260,7 +260,7 @@ class MainActivity : ComponentActivity() {
         if (hasFocus && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
             lifecycleScope.launch {
                 delay(250.milliseconds)
-                if (hasWindowFocus()) {
+                if (hasWindowFocus() && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
                     checkClipboardForUrl()
                 }
             }

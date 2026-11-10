@@ -762,12 +762,13 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
 
                 filename = ydl.prepare_filename(info)
 
-                if has_ffmpeg and not is_audio_only:
-                    base_name = os.path.splitext(filename)[0]
-                    for ext in [".mp4", ".mkv", ".webm"]:
-                        candidate = f"{base_name}{ext}"
-                        if os.path.exists(candidate):
-                            filename = candidate
+                base_name = os.path.splitext(filename)[0]
+                possible_exts = [".m4a", ".mp3", ".mp4", ".mkv", ".webm", ".opus", ".flac", ".ogg", ".aac"]
+                for ext in possible_exts:
+                    candidate = f"{base_name}{ext}"
+                    if os.path.exists(candidate):
+                        filename = candidate
+                        break
                             break
 
                 return {
