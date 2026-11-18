@@ -24,10 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.videodownloader.*
 import com.example.videodownloader.R
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import com.example.videodownloader.logic.island.IslandOverlayService
 import com.example.videodownloader.logic.OtaManager
 import com.example.videodownloader.ui.components.showInstantSnackbar
 import kotlinx.coroutines.flow.StateFlow
@@ -45,7 +41,8 @@ fun SettingsMainScreen(
     onOpenNotifSettings: () -> Unit,
     onOpenPlayerSettings: () -> Unit,
     onOpenAppearanceSettings: () -> Unit,
-    onOpenStorageSettings: () -> Unit
+    onOpenStorageSettings: () -> Unit,
+    onOpenIslandSettings: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -68,38 +65,6 @@ fun SettingsMainScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Row(
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "⚡ VIDEX DYNAMIC ISLAND",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            text = "BETA",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-            }
-
-            item {
-                DynamicIslandCard(snackbarHostState)
-            }
-
-            item {
                 Text(
                     text = stringResource(R.string.main_features_header),
                     style = MaterialTheme.typography.labelSmall,
@@ -119,6 +84,19 @@ fun SettingsMainScreen(
                 ) {
                     Column {
                         AutopilotRuleRow(onOpenShareRules)
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                        val islandEnabled by SettingsManager.islandEnabled.collectAsState()
+                        SettingsNavigationRow(
+                            title = stringResource(R.string.dynamic_island_title),
+                            subtitle = if (islandEnabled) "Активен • Всплывающая капсула поверх приложений" else "Выключено",
+                            icon = Icons.Default.SmartDisplay,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            subtitleColor = if (islandEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            onClick = onOpenIslandSettings
+                        )
 
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
@@ -551,257 +529,5 @@ fun SettingsSwitchRow(
             onCheckedChange = onCheckedChange,
             colors = customSwitchColors()
         )
-    }
-}
-
-@Composable
-fun DynamicIslandCard(snackbarHostState: SnackbarHostState) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val islandEnabled by SettingsManager.islandEnabled.collectAsState()
-    val islandAutoTransit by SettingsManager.islandAutoTransit.collectAsState()
-    val islandVibration by SettingsManager.islandVibration.collectAsState()
-    var showPermDialog by remember { mutableStateOf(false) }
-
-    if (showPermDialog) {
-        AlertDialog(
-            onDismissRequest = { showPermDialog = false },
-            title = { Text(stringResource(R.string.dynamic_island_perm_dialog_title)) },
-            text = { Text(stringResource(R.string.dynamic_island_overlay_perm_req)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPermDialog = false
-                        try {
-                            val intent = Intent(
-                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                Uri.parse("package:${context.packageName}")
-                            ).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    }
-                ) {
-                    Text(stringResource(R.string.dynamic_island_grant_perm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermDialog = false }) {
-                    Text(stringResource(R.string.cancel_action))
-                }
-            }
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
-        border = com.example.videodownloader.ui.theme.getAppCardBorder()
-    ) {
-        Column {
-            // Главный переключатель Dynamic Island
-            Row(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Bolt,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.dynamic_island_enable),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        stringResource(R.string.dynamic_island_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Switch(
-                    checked = islandEnabled,
-                    onCheckedChange = { checked ->
-                        if (checked && !Settings.canDrawOverlays(context)) {
-                            showPermDialog = true
-                        } else {
-                            SettingsManager.setIslandEnabled(checked)
-                        }
-                    },
-                    colors = customSwitchColors()
-                )
-            }
-
-            if (islandEnabled) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                )
-
-                // Авто-транзит
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Send,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.dynamic_island_auto_transit),
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            stringResource(R.string.dynamic_island_auto_transit_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Switch(
-                        checked = islandAutoTransit,
-                        onCheckedChange = { SettingsManager.setIslandAutoTransit(it) },
-                        colors = customSwitchColors()
-                    )
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                )
-
-                // Тактильный виброотклик
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Vibration,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.dynamic_island_vibration),
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            "Тактильная отдача при появлении и скачивании",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Switch(
-                        checked = islandVibration,
-                        onCheckedChange = { SettingsManager.setIslandVibration(it) },
-                        colors = customSwitchColors()
-                    )
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                )
-
-                // Тест островка
-                Row(
-                    modifier = Modifier
-                        .clickable {
-                            if (!Settings.canDrawOverlays(context)) {
-                                showPermDialog = true
-                            } else {
-                                IslandOverlayService.showTestIsland(context)
-                                coroutineScope.launch {
-                                    snackbarHostState.showInstantSnackbar("⚡ Dynamic Island активирован!")
-                                }
-                            }
-                        }
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.dynamic_island_test),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "Показать тестовую анимацию островка на экране",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
     }
 }

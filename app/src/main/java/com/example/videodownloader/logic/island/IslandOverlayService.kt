@@ -27,6 +27,7 @@ import com.example.videodownloader.LogLevel
 import com.example.videodownloader.SettingsManager
 import com.example.videodownloader.logic.AnalysisManager
 import com.example.videodownloader.logic.DownloadManager
+import com.example.videodownloader.ui.theme.VideoDownloaderTheme
 import com.example.videodownloader.ui.island.DynamicIslandContainer
 import com.example.videodownloader.ui.island.IslandState
 import com.example.videodownloader.utils.detectPlatformName
@@ -126,15 +127,23 @@ class IslandOverlayService : Service() {
             setViewTreeViewModelStoreOwner(lifecycleOwner)
 
             setContent {
-                val state by _islandState.collectAsState()
-                DynamicIslandContainer(
-                    state = state,
-                    onDownloadVideo = { url -> startDownload(url, isAudio = false, isTransit = false) },
-                    onDownloadAudio = { url -> startDownload(url, isAudio = true, isTransit = false) },
-                    onDownloadTransit = { url -> startDownload(url, isAudio = false, isTransit = true) },
-                    onCancelDownload = { cancelCurrentDownload() },
-                    onDismiss = { hideAndStop() }
-                )
+                val appTheme by SettingsManager.appTheme.collectAsState()
+                val dynamicColors by SettingsManager.useDynamicColors.collectAsState()
+
+                VideoDownloaderTheme(
+                    appTheme = appTheme,
+                    dynamicColor = dynamicColors
+                ) {
+                    val state by _islandState.collectAsState()
+                    DynamicIslandContainer(
+                        state = state,
+                        onDownloadVideo = { url -> startDownload(url, isAudio = false, isTransit = false) },
+                        onDownloadAudio = { url -> startDownload(url, isAudio = true, isTransit = false) },
+                        onDownloadTransit = { url -> startDownload(url, isAudio = false, isTransit = true) },
+                        onCancelDownload = { cancelCurrentDownload() },
+                        onDismiss = { hideAndStop() }
+                    )
+                }
             }
         }
 

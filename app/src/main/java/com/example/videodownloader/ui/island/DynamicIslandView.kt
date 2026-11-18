@@ -1,15 +1,10 @@
 package com.example.videodownloader.ui.island
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,15 +14,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -35,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -43,7 +33,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -104,18 +93,18 @@ fun DynamicIslandContainer(
         }
     }
 
-    // Spring physics configuration (Apple Dynamic Island bouncy feeling)
+    // Эталонная пружинная физика Apple Spring
     val islandSpring = spring<Dp>(
-        dampingRatio = Spring.DampingRatioLowBouncy,
+        dampingRatio = 0.74f,
         stiffness = Spring.StiffnessMediumLow
     )
 
     val targetWidth = when (state) {
         is IslandState.Hidden -> 0.dp
-        is IslandState.ExpandedPrompt -> 360.dp
-        is IslandState.Downloading -> 220.dp
-        is IslandState.Success -> 180.dp
-        is IslandState.Error -> 260.dp
+        is IslandState.ExpandedPrompt -> 350.dp
+        is IslandState.Downloading -> 205.dp
+        is IslandState.Success -> 175.dp
+        is IslandState.Error -> 220.dp
     }
 
     val animatedWidth by animateDpAsState(
@@ -135,28 +124,21 @@ fun DynamicIslandContainer(
                 .width(animatedWidth)
                 .wrapContentHeight()
                 .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(32.dp),
-                    spotColor = Color(0x66000000),
-                    ambientColor = Color(0x33000000)
+                    elevation = 20.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    spotColor = Color.Black.copy(alpha = 0.7f),
+                    ambientColor = Color.Black.copy(alpha = 0.35f)
                 )
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xF20B0E14))
+                .clip(RoundedCornerShape(28.dp))
+                .background(Color(0xFA0A0C10))
                 .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0x406366F1),
-                            Color(0x22FFFFFF),
-                            Color(0x308B5CF6)
-                        )
-                    ),
-                    shape = RoundedCornerShape(32.dp)
+                    BorderStroke(0.6.dp, Color.White.copy(alpha = 0.16f)),
+                    shape = RoundedCornerShape(28.dp)
                 )
                 .pointerInput(Unit) {
                     detectVerticalDragGestures { _, dragAmount ->
-                        // Свайп вверх для мгновенного закрытия
-                        if (dragAmount < -15) {
+                        // Свайп вверх для мгновенного скрытия
+                        if (dragAmount < -12) {
                             playHaptic()
                             onDismiss()
                         }
@@ -230,31 +212,21 @@ private fun IslandExpandedCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Swipe Handle Bar
-        Box(
-            modifier = Modifier
-                .width(36.dp)
-                .height(4.dp)
-                .clip(CircleShape)
-                .background(Color(0x33FFFFFF))
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Content Row: Thumbnail + Info + Close Button
+        // Ряд 1: Превью + Метаданные + Кнопка закрытия
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Thumbnail / Platform Icon
+            // Превью ролика
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1E2533)),
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (!prompt.thumbnail.isNullOrBlank()) {
@@ -269,16 +241,21 @@ private fun IslandExpandedCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
+                        imageVector = when {
+                            prompt.platform.contains("YouTube", ignoreCase = true) -> Icons.Default.PlayArrow
+                            prompt.platform.contains("TikTok", ignoreCase = true) -> Icons.Default.MusicNote
+                            prompt.platform.contains("Instagram", ignoreCase = true) -> Icons.Default.PhotoLibrary
+                            else -> Icons.Default.Link
+                        },
                         contentDescription = null,
-                        tint = Color(0xFF60A5FA),
-                        modifier = Modifier.size(24.dp)
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
                 if (prompt.isAnalyzing) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color = Color.White
                     )
@@ -287,61 +264,36 @@ private fun IslandExpandedCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Metadata Column
+            // Текстовый блок
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Platform tag
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                when (prompt.platform.lowercase()) {
-                                    "tiktok" -> Color(0xFFFE2C55)
-                                    "instagram" -> Color(0xFFE1306C)
-                                    "youtube" -> Color(0xFFFF0000)
-                                    else -> Color(0xFF2563EB)
-                                }
-                            )
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = prompt.platform.uppercase(),
-                            color = Color.White,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-
-                    if (prompt.isAnalyzing) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Анализ ссылки...",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
+                Text(
+                    text = "${prompt.platform.uppercase()} • ${if (prompt.isAnalyzing) "АНАЛИЗ..." else "МЕДИА"}",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.8.sp
+                )
                 Spacer(modifier = Modifier.height(2.dp))
-
                 Text(
                     text = prompt.title.ifBlank { "Медиа из ${prompt.platform}" },
                     color = Color.White,
-                    fontSize = 13.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Close button
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Кнопка закрытия
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(26.dp)
                     .clip(CircleShape)
-                    .background(Color(0x22FFFFFF))
+                    .background(Color.White.copy(alpha = 0.08f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -350,77 +302,75 @@ private fun IslandExpandedCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Close,
+                    imageVector = Icons.Default.Close,
                     contentDescription = "Закрыть",
-                    tint = Color(0xFF94A3B8),
-                    modifier = Modifier.size(16.dp)
+                    tint = Color.White.copy(alpha = 0.65f),
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Action Buttons Row: [🎬 MP4] [🎵 MP3] [⚡ Транзит]
+        // Ряд 2: Три тактильные кнопки-пилюли
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Button 1: MP4 Video
-            Box(
+            // Кнопка 1: MP4 Видео (Основной акцент)
+            Surface(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF2563EB), Color(0xFF4F46E5))
-                        )
-                    )
+                    .weight(1.1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable(onClick = onVideoClick),
-                contentAlignment = Alignment.Center
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.primary
             ) {
                 Row(
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Download,
+                        imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = "MP4",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Button 2: MP3 Audio
-            Box(
+            // Кнопка 2: MP3 Аудио
+            Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1E2638))
-                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable(onClick = onAudioClick),
-                contentAlignment = Alignment.Center
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.10f),
+                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Row(
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MusicNote,
+                        imageVector = Icons.Default.MusicNote,
                         contentDescription = null,
-                        tint = Color(0xFFA5B4FC),
-                        modifier = Modifier.size(16.dp)
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = "MP3",
                         color = Color.White,
@@ -430,31 +380,29 @@ private fun IslandExpandedCard(
                 }
             }
 
-            // Button 3: Transit
-            Box(
+            // Кнопка 3: Транзит
+            Surface(
                 modifier = Modifier
                     .weight(1.1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF0891B2), Color(0xFF2563EB))
-                        )
-                    )
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable(onClick = onTransitClick),
-                contentAlignment = Alignment.Center
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.10f),
+                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Row(
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Bolt,
+                        imageVector = Icons.Default.Send,
                         contentDescription = null,
-                        tint = Color(0xFF67E8F9),
-                        modifier = Modifier.size(16.dp)
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = "Транзит",
                         color = Color.White,
@@ -465,18 +413,17 @@ private fun IslandExpandedCard(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Timeout progress line
+        // Ряд 3: Тонкая полоска таймаута автозакрытия
         if (prompt.timeoutProgress > 0f) {
+            Spacer(modifier = Modifier.height(10.dp))
             LinearProgressIndicator(
                 progress = { prompt.timeoutProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(1.5.dp)
                     .clip(CircleShape),
-                color = Color(0xFF6366F1),
-                trackColor = Color(0x1AFFFFFF),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.White.copy(alpha = 0.08f),
                 strokeCap = StrokeCap.Round
             )
         }
@@ -491,70 +438,64 @@ private fun IslandDownloadingPill(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(42.dp)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Circular progress indicator with percentage
+        // Круговой индикатор прогресса
         Box(
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(22.dp),
             contentAlignment = Alignment.Center
         ) {
             if (downloading.progress > 0) {
                 CircularProgressIndicator(
                     progress = { downloading.progress / 100f },
                     modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 3.dp,
-                    color = Color(0xFF38BDF8),
-                    trackColor = Color(0x22FFFFFF),
+                    strokeWidth = 2.5.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.White.copy(alpha = 0.15f),
                     strokeCap = StrokeCap.Round
-                )
-                Text(
-                    text = "${downloading.progress}",
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black
                 )
             } else {
                 CircularProgressIndicator(
                     modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 3.dp,
-                    color = Color(0xFF38BDF8),
-                    trackColor = Color(0x22FFFFFF)
+                    strokeWidth = 2.5.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.White.copy(alpha = 0.15f)
                 )
             }
         }
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        // Center: Speed & Title
+        // Скорость и состояние
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = if (downloading.speed.isNotBlank()) downloading.speed else "Загрузка...",
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
             Text(
-                text = if (downloading.isTransit) "⚡ Режим транзита" else (if (downloading.isAudio) "🎵 Аудио" else "🎬 Видео"),
-                color = Color(0xFF94A3B8),
-                fontSize = 10.sp,
+                text = "${downloading.progress}% • ${if (downloading.isTransit) "Транзит" else if (downloading.isAudio) "Аудио" else "Видео"}",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 9.5.sp,
                 maxLines = 1
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
-        // Cancel Button
+        // Кнопка отмены
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(22.dp)
                 .clip(CircleShape)
-                .background(Color(0x22FFFFFF))
+                .background(Color.White.copy(alpha = 0.08f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -563,10 +504,10 @@ private fun IslandDownloadingPill(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Rounded.Close,
+                imageVector = Icons.Default.Close,
                 contentDescription = "Отмена",
-                tint = Color(0xFFCBD5E1),
-                modifier = Modifier.size(14.dp)
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(12.dp)
             )
         }
     }
@@ -579,24 +520,23 @@ private fun IslandSuccessBadge(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .background(Color(0xF2062517))
+            .height(42.dp)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Rounded.CheckCircle,
+            imageVector = Icons.Default.CheckCircle,
             contentDescription = null,
-            tint = Color(0xFF10B981),
-            modifier = Modifier.size(20.dp)
+            tint = Color(0xFF34D399),
+            modifier = Modifier.size(18.dp)
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = if (success.isTransit) "Отправка в мессенджер..." else "Сохранено!",
-            color = Color(0xFFE2E8F0),
+            text = if (success.isTransit) "Отправка ✈️" else "Сохранено ✓",
+            color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
@@ -611,15 +551,23 @@ private fun IslandErrorBadge(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .background(Color(0xF2300D15))
-            .padding(horizontal = 14.dp),
+            .height(42.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        Icon(
+            imageVector = Icons.Default.ErrorOutline,
+            contentDescription = null,
+            tint = Color(0xFFF87171),
+            modifier = Modifier.size(16.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
         Text(
             text = error.message,
-            color = Color(0xFFFCA5A5),
+            color = Color.White.copy(alpha = 0.9f),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
@@ -627,21 +575,21 @@ private fun IslandErrorBadge(
             overflow = TextOverflow.Ellipsis
         )
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(20.dp)
                 .clip(CircleShape)
-                .background(Color(0x22FFFFFF))
+                .background(Color.White.copy(alpha = 0.08f))
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Rounded.Close,
+                imageVector = Icons.Default.Close,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(14.dp)
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(12.dp)
             )
         }
     }

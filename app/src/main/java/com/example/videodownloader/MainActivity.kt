@@ -490,7 +490,7 @@ fun RequestNotificationPermission() {
     }
 }
 
-enum class Screen { Home, History, Settings, Logs, About, ShareRules, SpeedSettings, Accounts, WebViewLogin, NotifSettings, Player, PlayerSettings, Gallery, AudioPlayer, AppearanceSettings, StorageSettings, TipFramesSettings, HapticSettings }
+enum class Screen { Home, History, Settings, Logs, About, ShareRules, SpeedSettings, Accounts, WebViewLogin, NotifSettings, Player, PlayerSettings, Gallery, AudioPlayer, AppearanceSettings, StorageSettings, TipFramesSettings, HapticSettings, IslandSettings }
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -737,7 +737,8 @@ fun AppNavigation(
                             onOpenNotifSettings = { mainViewModel.currentScreen = Screen.NotifSettings },
                             onOpenPlayerSettings = { mainViewModel.currentScreen = Screen.PlayerSettings },
                             onOpenAppearanceSettings = { mainViewModel.currentScreen = Screen.AppearanceSettings },
-                            onOpenStorageSettings = { mainViewModel.currentScreen = Screen.StorageSettings }
+                            onOpenStorageSettings = { mainViewModel.currentScreen = Screen.StorageSettings },
+                            onOpenIslandSettings = { mainViewModel.currentScreen = Screen.IslandSettings }
                         )
                         Screen.Logs -> LogViewerScreen(
                             snackbarHostState = snackbarHostState,
@@ -784,6 +785,10 @@ fun AppNavigation(
                             onBack = { mainViewModel.currentScreen = Screen.AppearanceSettings }
                         )
                         Screen.StorageSettings -> com.example.videodownloader.ui.screens.settings.StorageSettingsScreen(
+                            snackbarHostState = snackbarHostState,
+                            onBack = { mainViewModel.currentScreen = Screen.Settings }
+                        )
+                        Screen.IslandSettings -> com.example.videodownloader.ui.screens.settings.DynamicIslandSettingsScreen(
                             snackbarHostState = snackbarHostState,
                             onBack = { mainViewModel.currentScreen = Screen.Settings }
                         )
