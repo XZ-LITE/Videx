@@ -283,4 +283,17 @@
     <string name="shortcut_history_short">История</string>
     <string name="shortcut_paste_label">Вставить из буфера</string>
     <string name="shortcut_paste_short">Вставить</string>
+
+    <!-- Dynamic Island -->
+    <string name="share_to_island">⚡ Videx Островок</string>
+    <string name="dynamic_island_title">Videx Dynamic Island</string>
+    <string name="dynamic_island_desc">Всплывающая интерактивная капсула поверх TikTok, Reels и Shorts для скачивания в 1 тап</string>
+    <string name="dynamic_island_enable">Включить Dynamic Island</string>
+    <string name="dynamic_island_auto_transit">Авто-транзит</string>
+    <string name="dynamic_island_auto_transit_desc">Сразу открывать меню отправки после загрузки</string>
+    <string name="dynamic_island_vibration">Тактильный виброотклик</string>
+    <string name="dynamic_island_test">Протестировать островок</string>
+    <string name="dynamic_island_perm_dialog_title">Требуется разрешение</string>
+    <string name="dynamic_island_overlay_perm_req">Для показа плавающей капсулы поверх TikTok, Instagram и YouTube необходимо разрешить отображение поверх других окон.</string>
+    <string name="dynamic_island_grant_perm">Разрешить в настройках</string>
 </resources>

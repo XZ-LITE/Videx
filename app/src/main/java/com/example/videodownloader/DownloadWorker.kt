@@ -56,6 +56,8 @@ class DownloadWorker(
         const val KEY_THUMBNAIL = "KEY_THUMBNAIL"
         const val KEY_PASSPORT = "KEY_PASSPORT" // Путь к JSON-паспорту
         const val KEY_PROGRESS = "KEY_PROGRESS"
+        const val KEY_SPEED = "KEY_SPEED"
+        const val KEY_ETA = "KEY_ETA"
         const val KEY_SLOT = "KEY_SLOT"
         const val KEY_IS_BATCH = "KEY_IS_BATCH"
         const val KEY_BATCH_SIZE = "KEY_BATCH_SIZE"
@@ -290,7 +292,9 @@ class DownloadWorker(
                                     workDataOf(
                                         KEY_PROGRESS to progress,
                                         KEY_TITLE to downloadTitle,
-                                        KEY_URL to url
+                                        KEY_URL to url,
+                                        KEY_SPEED to formatSpeed(speed),
+                                        KEY_ETA to formatEta(eta)
                                     )
                                 )
                                 notificationManager.notify(

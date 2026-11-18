@@ -111,6 +111,12 @@ object SettingsManager {
     private const val KEY_HAPTIC_PLAYER = "haptic_player"
     private const val KEY_HAPTIC_LONG_PRESS = "haptic_long_press"
 
+    // ⚡ Dynamic Island
+    private const val KEY_ISLAND_ENABLED = "island_enabled"
+    private const val KEY_ISLAND_AUTO_TRANSIT = "island_auto_transit"
+    private const val KEY_ISLAND_VIBRATION = "island_vibration"
+    private const val KEY_ISLAND_TIMEOUT_SEC = "island_timeout_sec"
+
     private const val DEFAULT_FOLDER_NAME = "Downloads/Videx"
 
     private var prefs: SharedPreferences? = null
@@ -234,6 +240,19 @@ object SettingsManager {
 
     private val _useClipboardHistory = MutableStateFlow(true)
     val useClipboardHistory: StateFlow<Boolean> = _useClipboardHistory
+
+    // ⚡ Dynamic Island
+    private val _islandEnabled = MutableStateFlow(true)
+    val islandEnabled: StateFlow<Boolean> = _islandEnabled
+
+    private val _islandAutoTransit = MutableStateFlow(false)
+    val islandAutoTransit: StateFlow<Boolean> = _islandAutoTransit
+
+    private val _islandVibration = MutableStateFlow(true)
+    val islandVibration: StateFlow<Boolean> = _islandVibration
+
+    private val _islandTimeoutSec = MutableStateFlow(6)
+    val islandTimeoutSec: StateFlow<Int> = _islandTimeoutSec
 
     private val _autoAnalyzeLinks = MutableStateFlow(true)
     val autoAnalyzeLinks: StateFlow<Boolean> = _autoAnalyzeLinks
@@ -473,6 +492,11 @@ object SettingsManager {
         _ruleOther.value = loadRule(KEY_RULE_OTHER, PlatformDownloadRule.VIDEO)
         _avgSpeedWifi.value = prefs?.getLong(KEY_AVG_SPEED_WIFI, 10 * 1024 * 1024L) ?: (10 * 1024 * 1024L)
         _avgSpeedMobile.value = prefs?.getLong(KEY_AVG_SPEED_MOBILE, 2 * 1024 * 1024L) ?: (2 * 1024 * 1024L)
+
+        _islandEnabled.value = prefs?.getBoolean(KEY_ISLAND_ENABLED, true) ?: true
+        _islandAutoTransit.value = prefs?.getBoolean(KEY_ISLAND_AUTO_TRANSIT, false) ?: false
+        _islandVibration.value = prefs?.getBoolean(KEY_ISLAND_VIBRATION, true) ?: true
+        _islandTimeoutSec.value = prefs?.getInt(KEY_ISLAND_TIMEOUT_SEC, 6) ?: 6
         
         _isInitialized.value = true
     }
@@ -928,6 +952,26 @@ object SettingsManager {
     fun setPipActionsEnabled(value: Boolean) {
         _pipActionsEnabled.value = value
         prefs?.edit()?.putBoolean(KEY_PIP_ACTIONS_ENABLED, value)?.apply()
+    }
+
+    fun setIslandEnabled(enabled: Boolean) {
+        _islandEnabled.value = enabled
+        prefs?.edit()?.putBoolean(KEY_ISLAND_ENABLED, enabled)?.apply()
+    }
+
+    fun setIslandAutoTransit(enabled: Boolean) {
+        _islandAutoTransit.value = enabled
+        prefs?.edit()?.putBoolean(KEY_ISLAND_AUTO_TRANSIT, enabled)?.apply()
+    }
+
+    fun setIslandVibration(enabled: Boolean) {
+        _islandVibration.value = enabled
+        prefs?.edit()?.putBoolean(KEY_ISLAND_VIBRATION, enabled)?.apply()
+    }
+
+    fun setIslandTimeoutSec(sec: Int) {
+        _islandTimeoutSec.value = sec
+        prefs?.edit()?.putInt(KEY_ISLAND_TIMEOUT_SEC, sec)?.apply()
     }
 
     fun updateAvgSpeed(newSpeedBps: Long, isWifi: Boolean) {

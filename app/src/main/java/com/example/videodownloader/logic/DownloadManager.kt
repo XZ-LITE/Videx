@@ -17,6 +17,8 @@ data class DownloadTaskStatus(
     val title: String,
     val url: String = "",
     val progress: Int,
+    val speed: String = "",
+    val eta: String = "",
     val state: WorkInfo.State,
     val startTime: Long = System.currentTimeMillis(),
 )
@@ -71,6 +73,8 @@ object DownloadManager {
                     if (runningWork != null) {
                         val taskUrl = runningWork.progress.getString(DownloadWorker.KEY_URL) ?: ""
                         val taskTitle = runningWork.progress.getString(DownloadWorker.KEY_TITLE) ?: "Загрузка..."
+                        val taskSpeed = runningWork.progress.getString(DownloadWorker.KEY_SPEED) ?: ""
+                        val taskEta = runningWork.progress.getString(DownloadWorker.KEY_ETA) ?: ""
 
                         allTasks.add(
                             DownloadTaskStatus(
@@ -79,6 +83,8 @@ object DownloadManager {
                                 title = taskTitle,
                                 url = taskUrl,
                                 progress = runningWork.progress.getInt(DownloadWorker.KEY_PROGRESS, 0),
+                                speed = taskSpeed,
+                                eta = taskEta,
                                 state = WorkInfo.State.RUNNING,
                                 startTime = System.currentTimeMillis()
                             )
