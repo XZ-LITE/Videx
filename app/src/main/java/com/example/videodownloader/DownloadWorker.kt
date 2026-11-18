@@ -233,7 +233,7 @@ class DownloadWorker(
         var lastProgress = 0
         var lastUpdateTime = 0L
         var attempt = 0
-        var downloadResult: kotlin.Result<YtDlpBridge.DownloadResult>? = null
+        var downloadResult: kotlin.Result<DownloadResult>? = null
 
         try {
             while (attempt <= maxRetries && !isStopped) {

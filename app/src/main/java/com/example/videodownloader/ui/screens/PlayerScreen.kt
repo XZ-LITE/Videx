@@ -7,6 +7,7 @@ import com.example.videodownloader.performAppHaptic
 import com.example.videodownloader.HapticType
 import android.media.AudioManager
 import android.net.Uri
+import kotlin.math.roundToInt
 import kotlinx.coroutines.isActive
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -530,7 +531,7 @@ fun PlayerScreen(
                                         activity?.window?.attributes = lp
                                     } else {
                                         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (newValue * max).kotlin.math.roundToInt(), 0)
+                                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (newValue * max).roundToInt(), 0)
                                     }
                                     nextDrag.consume()
                                 }
