@@ -298,7 +298,7 @@ object HistoryManager {
         mediaType: MediaType,
         sourceUrl: String = "",
         thumbnailUrl: String? = null,
-    ) = withContext(Dispatchers.IO) {
+    ): DownloadedFileItem = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
         val dao = AppDatabase.getDatabase(appContext).historyDao()
         val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())
@@ -327,6 +327,7 @@ object HistoryManager {
 
         dao.insert(item)
         AsyncLogger.log(LogLevel.INFO, "Сохранено в Room: $name ($sizeFormatted)")
+        item
     }
 
     /**
@@ -834,30 +835,74 @@ object HistoryManager {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path + "/Videx",
         )
 
-        // Добавляем пользовательский каталог из Настроек (с поддержкой основной памяти, SD-карт и OTG накопителей)
+        val foundItems = mutableListOf<DownloadedFileItem>()
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+
+        // 🛡️ Сканируем пользовательский каталог из Настроек через Storage Access Framework (SAF)
+        // На Android 10+ прямой POSIX File.listFiles() для произвольных папок выдает Permission Denied
         val customUri = SettingsManager.getCustomDirUri()
         if (customUri != null) {
             try {
-                val p = customUri.path
-                if (!p.isNullOrBlank()) {
-                    val localPath = when {
-                        p.contains("primary:") -> Environment.getExternalStorageDirectory().absolutePath + "/" + p.substringAfter("primary:")
-                        p.contains(":") -> {
-                            val volume = p.substringAfter("tree/").substringBefore(":").substringAfterLast("/")
-                            val relative = p.substringAfter(":")
-                            "/storage/$volume/$relative"
+                val treeDoc = DocumentFile.fromTreeUri(appContext, customUri)
+                if (treeDoc != null && treeDoc.isDirectory) {
+                    treeDoc.listFiles().forEach { docFile ->
+                        val fileName = docFile.name ?: return@forEach
+                        if (docFile.isFile && !isTrashedOrTempPath(fileName)) {
+                            val uriString = docFile.uri.toString()
+                            if (existingPaths.contains(uriString)) return@forEach
+
+                            val ext = fileName.substringAfterLast('.', "").lowercase()
+                            val mediaType = when (ext) {
+                                "jpg", "jpeg", "png", "webp" -> MediaType.PHOTO
+                                "mp3", "m4a", "wav", "ogg", "aac", "flac" -> MediaType.AUDIO
+                                else -> MediaType.VIDEO
+                            }
+
+                            val size = docFile.length()
+                            val mediaInfo = extractMediaInfo(appContext, uriString, mediaType)
+                            val duration = mediaInfo.durationMs
+                            val fingerprintByMeta = "${size}_$duration"
+
+                            val healingList = if (mediaType != MediaType.PHOTO) missingMap[fingerprintByMeta] else null
+                            val healingTarget = if (healingList != null && healingList.isNotEmpty()) healingList.removeAt(0) else null
+
+                            if (healingTarget != null) {
+                                dao.update(healingTarget.copy(
+                                    pathOrUri = uriString,
+                                    name = fileName.substringBeforeLast('.'),
+                                    isMissing = false,
+                                ))
+                                AsyncLogger.log(LogLevel.INFO, "SAF: Файл '${healingTarget.name}' был исцелен (новый URI: $fileName)")
+                            } else {
+                                val cleanFileName = fileName.substringBeforeLast('.')
+                                val nameFingerprint = "${cleanFileName}_${size}"
+
+                                if (!existingFingerprints.contains(nameFingerprint)) {
+                                    existingFingerprints.add(nameFingerprint)
+                                    val lastMod = docFile.lastModified().let { if (it > 0) it else System.currentTimeMillis() }
+                                    foundItems.add(
+                                        DownloadedFileItem(
+                                            id = UUID.randomUUID().toString(),
+                                            pathOrUri = uriString,
+                                            name = cleanFileName,
+                                            sizeBytes = size,
+                                            sizeFormatted = formatBytes(size),
+                                            dateFormatted = dateFormat.format(Date(lastMod)),
+                                            mediaType = mediaType,
+                                            durationMs = duration,
+                                            thumbnailUrl = mediaInfo.localThumbPath,
+                                            timestamp = lastMod,
+                                        )
+                                    )
+                                }
+                            }
                         }
-                        else -> p
-                    }
-                    if (localPath.isNotBlank() && !folders.contains(localPath)) {
-                        folders.add(localPath)
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                AsyncLogger.log(LogLevel.WARN, "Ошибка SAF сканирования: ${e.message}")
+            }
         }
-        
-        val foundItems = mutableListOf<DownloadedFileItem>()
-        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
         
         for (folderPath in folders) {
             val dir = File(folderPath)

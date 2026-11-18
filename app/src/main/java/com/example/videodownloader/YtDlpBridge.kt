@@ -37,6 +37,12 @@ data class VideoMetadata(
     val playlistEntries: List<PlaylistItem> = emptyList()
 )
 
+@Immutable
+data class DownloadResult(
+    val file: File,
+    val historyItem: DownloadedFileItem?
+)
+
 interface DownloadProgressListener {
     fun onProgressDetailed(percent: Int, speedBytes: Long, etaSeconds: Long)
     fun isCancelled(): Boolean
@@ -211,7 +217,7 @@ object YtDlpBridge {
         passportPath: String = "",
         isCancelled: () -> Boolean = { false },
         onProgress: (percent: Int, speedBytes: Long, etaSeconds: Long) -> Unit
-    ): Result<File> = withContext(Dispatchers.IO) {
+    ): Result<DownloadResult> = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
 
         // 🛡️ СКАЧИВАНИЕ ВО ВНУТРЕННИЙ КЭШ: На Android 10+ (API 29-36) прямое создание файлов Python/POSIX
@@ -279,6 +285,7 @@ object YtDlpBridge {
                 val saveToGallery = SettingsManager.saveToGallery.value
 
                 var firstSavedFile: File? = null
+                var firstSavedItem: DownloadedFileItem? = null
 
                 fun cleanFileNameForHistory(rawName: String): String {
                     var clean = rawName.replace(Regex("""\s*\[[a-zA-Z0-9_-]{5,}$"""), "").trim()
@@ -347,7 +354,7 @@ object YtDlpBridge {
 
                         val cleanHistoryName = cleanFileNameForHistory(srcFile.nameWithoutExtension)
 
-                        HistoryManager.addEntry(
+                        val entry = HistoryManager.addEntry(
                             context = appContext,
                             pathOrUri = newDoc.uri.toString(),
                             name = cleanHistoryName,
@@ -356,6 +363,7 @@ object YtDlpBridge {
                             sourceUrl = url,
                             thumbnailUrl = thumbnailUrl
                         )
+                        if (firstSavedItem == null) firstSavedItem = entry
                     } else {
                         val savedUriOrPath = saveToPublicStorage(
                             context = appContext,
@@ -375,7 +383,7 @@ object YtDlpBridge {
 
                         val cleanHistoryName = cleanFileNameForHistory(srcFile.nameWithoutExtension)
 
-                        HistoryManager.addEntry(
+                        val entry = HistoryManager.addEntry(
                             context = appContext,
                             pathOrUri = savedUriOrPath,
                             name = cleanHistoryName,
@@ -384,11 +392,12 @@ object YtDlpBridge {
                             sourceUrl = url,
                             thumbnailUrl = thumbnailUrl
                         )
+                        if (firstSavedItem == null) firstSavedItem = entry
                     }
                 }
 
                 AsyncLogger.log(LogLevel.INFO, "Успешно сохранено файлов: ${downloadedFiles.size}")
-                Result.success(firstSavedFile ?: File(outputDir, "done"))
+                Result.success(DownloadResult(firstSavedFile ?: File(outputDir, "done"), firstSavedItem))
             } else {
                 val err = pyResult.callAttr("get", "error_msg")?.toString() ?: "Неизвестная ошибка"
                 AsyncLogger.log(LogLevel.ERROR, "Ошибка при скачивании: $err")

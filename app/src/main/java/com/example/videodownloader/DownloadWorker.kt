@@ -233,7 +233,7 @@ class DownloadWorker(
         var lastProgress = 0
         var lastUpdateTime = 0L
         var attempt = 0
-        var downloadResult: kotlin.Result<File>? = null
+        var downloadResult: kotlin.Result<YtDlpBridge.DownloadResult>? = null
 
         try {
             while (attempt <= maxRetries && !isStopped) {
@@ -335,7 +335,7 @@ class DownloadWorker(
                 }
                 
                 val isLastInQueue = remainingInQueue == 0
-                val lastItem = HistoryManager.getLatestEntry(context)
+                val lastItem = downloadResult?.getOrNull()?.historyItem ?: HistoryManager.getLatestEntry(context)
 
                 if (isBatchIntent && isQueueSummary) {
                     if (isLastInQueue) {

@@ -83,16 +83,20 @@ object DownloadManager {
                                 startTime = System.currentTimeMillis()
                             )
                         )
-                    } else if (enqueuedCount > 0) {
-                        val firstEnqueued = workInfoList.find { (it.state == WorkInfo.State.ENQUEUED) || (it.state == WorkInfo.State.BLOCKED) }
-                        val enqueuedUrlTag = firstEnqueued?.tags?.firstOrNull { it.startsWith("url_hash_") }?.substringAfter("url_hash_") ?: ""
+                    }
+
+                    val enqueuedWorks = workInfoList.filter { 
+                        it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED 
+                    }
+                    for (enqueued in enqueuedWorks) {
+                        val enqueuedUrlTag = enqueued.tags.firstOrNull { it.startsWith("url_hash_") } ?: ""
 
                         allTasks.add(
                             DownloadTaskStatus(
-                                id = firstEnqueued?.id ?: UUID.randomUUID(),
+                                id = enqueued.id,
                                 slot = slot,
                                 title = "Ожидание в слоте $slot...",
-                                url = "url_hash_$enqueuedUrlTag", // Сохраняем формат тега для isAlreadyDownloading
+                                url = enqueuedUrlTag,
                                 progress = 0,
                                 state = WorkInfo.State.ENQUEUED
                             )

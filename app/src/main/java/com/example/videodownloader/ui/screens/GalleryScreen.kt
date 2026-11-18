@@ -22,6 +22,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +60,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import coil.compose.AsyncImage
 import com.example.videodownloader.DownloadedFileItem
 import com.example.videodownloader.HistoryManager
+import com.example.videodownloader.MediaType
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
@@ -169,8 +172,31 @@ fun GalleryScreen(
         }
     }
 
-    val modelUriOrFile = remember(item.pathOrUri) {
-        if (item.pathOrUri.startsWith("content://")) Uri.parse(item.pathOrUri) else File(item.pathOrUri)
+    val historyList by HistoryManager.getHistoryFlow(context).collectAsState(initial = emptyList())
+    val photoList = remember(historyList, item) {
+        val photos = historyList.filter { it.mediaType == MediaType.PHOTO && !it.isMissing }
+        val postPhotos = if (item.sourceUrl.isNotBlank()) photos.filter { it.sourceUrl == item.sourceUrl } else emptyList()
+        val list = if (postPhotos.size > 1) postPhotos else if (photos.isNotEmpty()) photos else listOf(item)
+        if (list.none { it.id == item.id }) list + item else list
+    }
+
+    val initialIndex = remember(photoList, item) {
+        photoList.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
+    }
+
+    val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { photoList.size })
+    val currentItem = photoList.getOrElse(pagerState.currentPage) { item }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (scale.value > 1f || offsetX.value != 0f || offsetY.value != 0f) {
+            scale.snapTo(1f)
+            offsetX.snapTo(0f)
+            offsetY.snapTo(0f)
+        }
+    }
+
+    val currentModelUriOrFile = remember(currentItem.pathOrUri) {
+        if (currentItem.pathOrUri.startsWith("content://")) Uri.parse(currentItem.pathOrUri) else File(currentItem.pathOrUri)
     }
 
     Box(
@@ -221,28 +247,45 @@ fun GalleryScreen(
     ) {
         // 🔮 Фоновое размытие
         AsyncImage(
-            model = modelUriOrFile,
+            model = currentModelUriOrFile,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize().blur(40.dp).graphicsLayer(alpha = backgroundAlpha.value * 0.4f)
         )
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = (1f - backgroundAlpha.value).coerceAtLeast(0.3f))))
 
-        // Изображение
-        AsyncImage(
-            model = modelUriOrFile,
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale.value * entranceScale.value,
-                    scaleY = scale.value * entranceScale.value,
-                    translationX = offsetX.value,
-                    translationY = offsetY.value,
-                    alpha = entranceAlpha.value
+        // Карусель изображений
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = scale.value <= 1.05f && !showInfo,
+            modifier = Modifier.fillMaxSize()
+        ) { pageIndex ->
+            val pageItem = photoList.getOrElse(pageIndex) { item }
+            val pageModel = remember(pageItem.pathOrUri) {
+                if (pageItem.pathOrUri.startsWith("content://")) Uri.parse(pageItem.pathOrUri) else File(pageItem.pathOrUri)
+            }
+            val isCurrentPage = pagerState.currentPage == pageIndex
+
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = pageModel,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = if (isCurrentPage) scale.value * entranceScale.value else 1f,
+                            scaleY = if (isCurrentPage) scale.value * entranceScale.value else 1f,
+                            translationX = if (isCurrentPage) offsetX.value else 0f,
+                            translationY = if (isCurrentPage) offsetY.value else 0f,
+                            alpha = entranceAlpha.value
+                        )
                 )
-        )
+            }
+        }
 
         // 🔝 TOP BAR
         AnimatedVisibility(
@@ -270,15 +313,16 @@ fun GalleryScreen(
                     horizontalAlignment = Alignment.Start // Выравниваем по левому краю для максимальной ширины
                 ) {
                     Text(
-                        text = item.name,
+                        text = currentItem.name,
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp),
                         color = Color.White,
                         maxLines = 1,
                         modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                         textAlign = TextAlign.Start
                     )
+                    val counterText = if (photoList.size > 1) "${pagerState.currentPage + 1} из ${photoList.size} • " else ""
                     Text(
-                        text = item.sizeFormatted,
+                        text = "$counterText${currentItem.sizeFormatted}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White.copy(0.6f)
                     )
@@ -310,7 +354,7 @@ fun GalleryScreen(
                     // Поделиться
                     ActionIconButton(Icons.Default.Share) {
                         view.performAppHaptic(HapticType.CLICK)
-                        HistoryManager.shareMultipleFiles(context, listOf(item))
+                        HistoryManager.shareMultipleFiles(context, listOf(currentItem))
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -379,7 +423,7 @@ fun GalleryScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (item.name.contains(".")) item.name.substringAfterLast(".").uppercase() else "МЕДИА",
+                            text = if (currentItem.name.contains(".")) currentItem.name.substringAfterLast(".").uppercase() else "МЕДИА",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary),
                             modifier = Modifier
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
@@ -389,13 +433,13 @@ fun GalleryScreen(
                     Spacer(modifier = Modifier.height(18.dp))
 
                     // Выстраиваем свойства друг под другом на всю ширину, чтобы длинная дата не переносилась
-                    InfoItemCard(icon = Icons.Rounded.Storage, label = "Размер", value = item.sizeFormatted)
+                    InfoItemCard(icon = Icons.Rounded.Storage, label = "Размер", value = currentItem.sizeFormatted)
                     Spacer(modifier = Modifier.height(10.dp))
                     
-                    InfoItemCard(icon = Icons.Rounded.CalendarToday, label = "Загружен", value = item.dateFormatted, maxLines = 1)
+                    InfoItemCard(icon = Icons.Rounded.CalendarToday, label = "Загружен", value = currentItem.dateFormatted, maxLines = 1)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    InfoItemCard(icon = Icons.Rounded.Description, label = "Имя файла", value = item.name, maxLines = 2)
+                    InfoItemCard(icon = Icons.Rounded.Description, label = "Имя файла", value = currentItem.name, maxLines = 2)
                     Spacer(modifier = Modifier.height(10.dp))
                     
                     // Блок пути к файлу с кнопкой копирования
@@ -419,13 +463,13 @@ fun GalleryScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Локальный путь", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(item.pathOrUri, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(currentItem.pathOrUri, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
                                     view.performAppHaptic(HapticType.CLICK)
-                                    clipboardManager.setText(AnnotatedString(item.pathOrUri))
+                                    clipboardManager.setText(AnnotatedString(currentItem.pathOrUri))
                                     Toast.makeText(context, "Путь скопирован в буфер", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
@@ -443,12 +487,17 @@ fun GalleryScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Удалить файл?") },
-            text = { Text("Файл «${item.name}» будет полностью удален из памяти устройства.") },
+            text = { Text("Файл «${currentItem.name}» будет полностью удален из памяти устройства.") },
             confirmButton = {
                 TextButton(onClick = {
+                    showDeleteDialog = false
                     coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        HistoryManager.deleteFile(context, item)
-                        launch(kotlinx.coroutines.Dispatchers.Main) { onBack() }
+                        HistoryManager.deleteFile(context, currentItem)
+                        launch(kotlinx.coroutines.Dispatchers.Main) {
+                            if (photoList.size <= 1) {
+                                onBack()
+                            }
+                        }
                     }
                 }) { Text("Удалить", color = Color(0xFFFF453A)) }
             },

@@ -33,7 +33,12 @@ fun extractUrlFromText(text: String): String {
         }
     }
 
-    if (match.isEmpty()) return text.trim()
+    if (match.isEmpty()) return ""
+
+    // 🛡️ Очищаем хвостовые знаки препинания (точка, запятая, восклицательный знак, скобки и т.д.),
+    // которые часто захватываются при копировании ссылок из сообщений чатов
+    match = match.trimEnd('.', ',', '!', '?', ')', ']', ';', ':', '>', '\"', '\'')
+    if (match.isBlank()) return ""
 
     // Если нашли www. или просто домен — добавляем https
     return if (!match.startsWith("http://", ignoreCase = true) && !match.startsWith("https://", ignoreCase = true)) {

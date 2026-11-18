@@ -105,6 +105,7 @@ class NotificationReceiver : BroadcastReceiver() {
             ACTION_SHARE_FILE -> {
                 val itemId = intent.getStringExtra(EXTRA_ITEM_ID)
                 val mimeType = intent.getStringExtra(EXTRA_MIME_TYPE) ?: "*/*"
+                val isAutopilot = intent.getBooleanExtra(EXTRA_IS_AUTOPILOT, false)
 
                 if (itemId != null) {
                     CoroutineScope(Dispatchers.IO).launch {
@@ -127,6 +128,7 @@ class NotificationReceiver : BroadcastReceiver() {
                                 val receiverIntent = Intent(context, NotificationReceiver::class.java).apply {
                                     action = ACTION_SHARE_SUCCESS
                                     putExtra(EXTRA_ITEM_ID, itemId)
+                                    putExtra(EXTRA_IS_AUTOPILOT, isAutopilot)
                                 }
 
                                 val pendingIntent = android.app.PendingIntent.getBroadcast(
@@ -168,9 +170,10 @@ class NotificationReceiver : BroadcastReceiver() {
                                 // Расчет задержки перед удалением транзитного файла
                                 val isWifi = com.example.videodownloader.utils.isWifiConnected(context)
                                 val avgSpeed = if (isWifi) SettingsManager.avgSpeedWifi.value else SettingsManager.avgSpeedMobile.value
+                                val safeSpeed = avgSpeed.coerceAtLeast(1024L * 100L) // Минимум 100 КБ/с для предотвращения деления на 0
                                 
                                 // Коэффициент запаса 2.5x (учитываем скорость отдачи)
-                                val estimatedUploadTimeMs = ((item.sizeBytes.toDouble() / avgSpeed) * 2500).toLong()
+                                val estimatedUploadTimeMs = ((item.sizeBytes.toDouble() / safeSpeed) * 2500).toLong()
                                 val baseSafetyTimeMs = 20000L
                                 
                                 val finalDelayMs = (estimatedUploadTimeMs + baseSafetyTimeMs).coerceIn(30000L, 600000L)

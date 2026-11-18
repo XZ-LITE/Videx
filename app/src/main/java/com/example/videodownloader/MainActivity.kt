@@ -843,7 +843,7 @@ fun AppNavigation(
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset { IntOffset(0, with(density) { dockTranslationY.toPx() }.roundToInt()) }
+                    .offset { IntOffset(0, dockTranslationY.roundToPx()) }
                     .padding(bottom = navBarBottomPadding + extraDockMargin)
                     .height(62.dp)
                     .wrapContentWidth(),

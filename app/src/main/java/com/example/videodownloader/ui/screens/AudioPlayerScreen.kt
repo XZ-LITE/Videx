@@ -58,6 +58,7 @@ import com.example.videodownloader.NotificationReceiver
 import com.example.videodownloader.MainActivity
 import com.example.videodownloader.AsyncLogger
 import com.example.videodownloader.LogLevel
+import com.example.videodownloader.logic.AudioPlaybackManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -100,140 +101,37 @@ fun AudioPlayerScreen(
         if (filtered.none { it.id == item.id }) filtered + item else filtered
     }
 
-    val initialIndex = remember(audioList, item) {
-        audioList.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
+    LaunchedEffect(item.id) {
+        AudioPlaybackManager.playTrack(context, item, audioList)
     }
 
-    var currentTrackId by remember { mutableStateOf(item.id) }
-    val currentItem = remember(audioList, currentTrackId) {
-        audioList.find { it.id == currentTrackId } ?: item
+    LaunchedEffect(audioList) {
+        AudioPlaybackManager.updatePlaylistIfNeeded(audioList)
     }
 
-    val exoPlayer = remember {
-        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
-            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
-            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build()
+    val currentTrack by AudioPlaybackManager.currentTrack.collectAsState()
+    val currentItem = currentTrack ?: item
+    val isPlaying by AudioPlaybackManager.isPlaying.collectAsState()
+    val position by AudioPlaybackManager.positionMs.collectAsState()
+    val duration by AudioPlaybackManager.durationMs.collectAsState()
+    val currentSpeed by AudioPlaybackManager.playbackSpeed.collectAsState()
+    val isRepeatOne by AudioPlaybackManager.isRepeatOne.collectAsState()
 
-        ExoPlayer.Builder(context)
-            .setAudioAttributes(audioAttributes, true) // 🎧 Авто-управление аудиофокусом
-            .setHandleAudioBecomingNoisy(true) // 🎧 Авто-пауза при отключении наушников/Bluetooth
-            .setSeekBackIncrementMs(10000)
-            .setSeekForwardIncrementMs(10000)
-            .build().apply {
-                setSeekParameters(androidx.media3.exoplayer.SeekParameters.EXACT)
-
-                val mediaItems = audioList.map { audioItem ->
-                    val mediaMetadata = androidx.media3.common.MediaMetadata.Builder()
-                        .setTitle(audioItem.name)
-                        .setArtist("Videx")
-                        .setArtworkUri(
-                            audioItem.thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
-                                if (it.startsWith("http://") || it.startsWith("https://")) Uri.parse(it)
-                                else Uri.fromFile(File(it))
-                            } ?: if (audioItem.pathOrUri.startsWith("content://")) audioItem.pathOrUri.toUri() else Uri.fromFile(File(audioItem.pathOrUri))
-                        )
-                        .build()
-
-                    val uri = if (audioItem.pathOrUri.startsWith("content://")) {
-                        audioItem.pathOrUri.toUri()
-                    } else {
-                        Uri.fromFile(File(audioItem.pathOrUri))
-                    }
-
-                    MediaItem.Builder()
-                        .setMediaId(audioItem.id)
-                        .setUri(uri)
-                        .setMediaMetadata(mediaMetadata)
-                        .build()
-                }
-
-                setMediaItems(mediaItems, initialIndex, 0L)
-                prepare()
-                playWhenReady = true
-            }
-    }
-
-    val audioIds = remember(audioList) { audioList.map { it.id } }
-
-    // Обновление плейлиста ExoPlayer без перезапуска декодера при прослушивании
-    LaunchedEffect(audioIds.size) {
-        if (exoPlayer.mediaItemCount != audioList.size && audioList.isNotEmpty()) {
-            val currentIndex = audioList.indexOfFirst { it.id == currentTrackId }.coerceAtLeast(0)
-            val mediaItems = audioList.map { audioItem ->
-                val mediaMetadata = androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(audioItem.name)
-                    .setArtist("Videx")
-                    .setArtworkUri(
-                        audioItem.thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
-                            if (it.startsWith("http://") || it.startsWith("https://")) Uri.parse(it)
-                            else Uri.fromFile(File(it))
-                        } ?: if (audioItem.pathOrUri.startsWith("content://")) audioItem.pathOrUri.toUri() else Uri.fromFile(File(audioItem.pathOrUri))
-                    )
-                    .build()
-
-                val uri = if (audioItem.pathOrUri.startsWith("content://")) {
-                    audioItem.pathOrUri.toUri()
-                } else {
-                    Uri.fromFile(File(audioItem.pathOrUri))
-                }
-
-                MediaItem.Builder()
-                    .setMediaId(audioItem.id)
-                    .setUri(uri)
-                    .setMediaMetadata(mediaMetadata)
-                    .build()
-            }
-
-            exoPlayer.setMediaItems(mediaItems, currentIndex, exoPlayer.currentPosition)
-        }
-    }
-
-    val mediaSession = remember(exoPlayer) {
-        MediaSession.Builder(context, exoPlayer)
-            .setId("AudioPlayerMediaSession_${item.id}")
-            .build()
-    }
-
-    var isPlaying by remember { mutableStateOf(true) }
-    var position by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(false) }
     var localSliderValue by remember { mutableFloatStateOf(0f) }
-    var speedIndex by remember { mutableIntStateOf(0) }
-    var isRepeatOne by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var lastPrevClickTime by remember { mutableLongStateOf(0L) }
 
     val speedOptions = remember { listOf(1.0f, 1.25f, 1.5f, 2.0f) }
-    val currentSpeed = speedOptions[speedIndex]
 
     // Кнопки перемотки и переключения
     fun playPreviousOrRestart() {
         view.performAppHaptic(HapticType.CLICK)
-        val currentPos = exoPlayer.currentPosition
-        val now = System.currentTimeMillis()
-        if (currentPos > 3000L && (now - lastPrevClickTime > 2000L)) {
-            // 1-й клик при прослушивании > 3 сек: отматываем текущий трек на начало (0мс)
-            exoPlayer.seekTo(0L)
-        } else {
-            // 2-й клик подряд или позиция < 3 сек: переключаем на ПРЕДЫДУЩИЙ трек в плейлисте
-            if (exoPlayer.hasPreviousMediaItem()) {
-                exoPlayer.seekToPreviousMediaItem()
-            } else {
-                exoPlayer.seekTo(0L)
-            }
-        }
-        lastPrevClickTime = now
+        AudioPlaybackManager.playPreviousOrRestart()
     }
 
     fun playNextTrack() {
         view.performAppHaptic(HapticType.CLICK)
-        if (exoPlayer.hasNextMediaItem()) {
-            exoPlayer.seekToNextMediaItem()
-        } else {
-            exoPlayer.seekTo(0, 0L)
-        }
+        AudioPlaybackManager.playNext()
     }
 
     // Анимация масштаба обложки при воспроизведении (1.0f при проигрывании, 0.88f на паузе)
@@ -246,139 +144,10 @@ fun AudioPlayerScreen(
         label = "AppleMusicCoverScale"
     )
 
-    LaunchedEffect(exoPlayer) {
-        while (isActive) {
-            if (!isDragging) {
-                position = exoPlayer.currentPosition.coerceAtLeast(0L)
-                val d = exoPlayer.duration
-                if (d > 0L) duration = d
-            }
-            delay(300.milliseconds)
-        }
-    }
-
     // Синхронизация Slider с позицией ExoPlayer
     LaunchedEffect(position, duration, isDragging) {
         if (!isDragging && duration > 0) {
             localSliderValue = (position.toFloat() / duration).coerceIn(0f, 1f)
-        }
-    }
-
-    DisposableEffect(exoPlayer, mediaSession) {
-        AudioControlBus.onPrevTrack = { playPreviousOrRestart() }
-        AudioControlBus.onPlayPause = { if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play() }
-        AudioControlBus.onNextTrack = { playNextTrack() }
-
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "audio_player_playback_channel"
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Аудиопроигрыватель",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Управление воспроизведением аудио"
-                setShowBadge(false)
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val openIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val contentPendingIntent = PendingIntent.getActivity(
-            context, 8888, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        fun updateSystemMediaNotification(playing: Boolean, activeItem: DownloadedFileItem) {
-            try {
-                @Suppress("DEPRECATION")
-                val token = mediaSession.sessionCompatToken
-
-                val prevIntent = Intent(context, NotificationReceiver::class.java).apply {
-                    action = NotificationReceiver.ACTION_AUDIO_PREV
-                }
-                val prevPendingIntent = PendingIntent.getBroadcast(
-                    context, 8001, prevIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-
-                val playPauseIntent = Intent(context, NotificationReceiver::class.java).apply {
-                    action = NotificationReceiver.ACTION_AUDIO_PLAY_PAUSE
-                }
-                val playPausePendingIntent = PendingIntent.getBroadcast(
-                    context, 8002, playPauseIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-
-                val nextIntent = Intent(context, NotificationReceiver::class.java).apply {
-                    action = NotificationReceiver.ACTION_AUDIO_NEXT
-                }
-                val nextPendingIntent = PendingIntent.getBroadcast(
-                    context, 8003, nextIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-
-                val notifBuilder = NotificationCompat.Builder(context, channelId)
-                    .setContentTitle(activeItem.name)
-                    .setContentText("${activeItem.sizeFormatted} • Videx")
-                    .setSmallIcon(android.R.drawable.ic_media_play)
-                    .setContentIntent(contentPendingIntent)
-                    .addAction(android.R.drawable.ic_media_previous, "Предыдущий", prevPendingIntent)
-                    .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Пауза" else "Воспроизведение", playPausePendingIntent)
-                    .addAction(android.R.drawable.ic_media_next, "Следующий", nextPendingIntent)
-                    .setOngoing(playing)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                    .setStyle(
-                        MediaNotificationCompat.MediaStyle()
-                            .setMediaSession(token)
-                            .setShowActionsInCompactView(0, 1, 2)
-                    )
-
-                notificationManager.notify(2002, notifBuilder.build())
-            } catch (e: Exception) {
-                AsyncLogger.log(LogLevel.WARN, "Media notification error: ${e.message}")
-            }
-        }
-
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-                updateSystemMediaNotification(playing, currentItem)
-            }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    val d = exoPlayer.duration
-                    if (d > 0L) duration = d
-                }
-            }
-
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                mediaItem?.mediaId?.let { id ->
-                    if (id.isNotBlank()) {
-                        currentTrackId = id
-                    }
-                }
-                val activeItem = audioList.find { it.id == mediaItem?.mediaId } ?: currentItem
-                updateSystemMediaNotification(exoPlayer.isPlaying, activeItem)
-            }
-        }
-        exoPlayer.addListener(listener)
-
-        updateSystemMediaNotification(isPlaying, currentItem)
-
-        onDispose {
-            AudioControlBus.onPrevTrack = null
-            AudioControlBus.onPlayPause = null
-            AudioControlBus.onNextTrack = null
-            exoPlayer.removeListener(listener)
-            try {
-                notificationManager.cancel(2002)
-            } catch (_: Exception) {}
-            // 🛡️ БАГФИКС: Раскомментировано освобождение ресурсов. 
-            // Это предотвращает наложение звуков и создание множества экземпляров плеера при навигации!
-            mediaSession.release()
-            exoPlayer.release()
         }
     }
 
@@ -398,6 +167,7 @@ fun AudioPlayerScreen(
                         onClick = {
                             showDeleteDialog = false
                             coroutineScope.launch {
+                                AudioPlaybackManager.onTrackDeleted(currentItem)
                                 HistoryManager.deleteFile(context, currentItem)
                                 onBack()
                             }
@@ -627,8 +397,7 @@ fun AudioPlayerScreen(
                     },
                     onValueChangeFinished = {
                         val targetPos = (localSliderValue * duration).toLong()
-                        exoPlayer.seekTo(targetPos)
-                        position = targetPos
+                        AudioPlaybackManager.seekTo(targetPos)
                         isDragging = false
                         view.performAppHaptic(HapticType.PLAYER_GESTURE)
                     },
@@ -658,8 +427,7 @@ fun AudioPlayerScreen(
                     IconButton(
                         onClick = {
                             view.performAppHaptic(HapticType.CLICK)
-                            isRepeatOne = !isRepeatOne
-                            exoPlayer.repeatMode = if (isRepeatOne) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                            AudioPlaybackManager.toggleRepeat()
                         }
                     ) {
                         Icon(
@@ -682,7 +450,7 @@ fun AudioPlayerScreen(
                     Surface(
                         onClick = {
                             view.performAppHaptic(HapticType.CLICK)
-                            if (isPlaying) exoPlayer.pause() else exoPlayer.play()
+                            AudioPlaybackManager.playPause()
                         },
                         shape = CircleShape,
                         color = Color.White,
@@ -711,8 +479,9 @@ fun AudioPlayerScreen(
                     Surface(
                         onClick = {
                             view.performAppHaptic(HapticType.CLICK)
-                            speedIndex = (speedIndex + 1) % speedOptions.size
-                            exoPlayer.setPlaybackSpeed(speedOptions[speedIndex])
+                            val curIdx = speedOptions.indexOf(currentSpeed).let { if (it < 0) 0 else it }
+                            val nextSpeed = speedOptions[(curIdx + 1) % speedOptions.size]
+                            AudioPlaybackManager.setPlaybackSpeed(nextSpeed)
                         },
                         shape = RoundedCornerShape(12.dp),
                         color = if (currentSpeed > 1.0f) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.15f),

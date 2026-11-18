@@ -467,14 +467,21 @@ def get_video_info(url, cookie_path="", use_impersonate=False, metadata_cache_pa
                 "is_playlist": False,
                 "playlist_entries": [],
                 "available_qualities": available_qualities,
+                "filesize": info.get("filesize") or info.get("filesize_approx") or 0,
                 "version": version
             }
 
         # 🧠 МГНОВЕННЫЙ СТАРТ: Сохраняем итоговые метаданные в JSON кэш в формате, ожидаемом Kotlin-частью (AnalysisManager)
         if metadata_cache_path and result_metadata:
             try:
+                to_cache = dict(result_metadata)
+                if info and info.get('_type') != 'playlist' and 'entries' not in info:
+                    try:
+                        to_cache["raw_info"] = ydl.sanitize_info(info)
+                    except Exception:
+                        pass
                 with open(metadata_cache_path, 'w', encoding='utf-8') as f:
-                    json.dump(result_metadata, f, ensure_ascii=False)
+                    json.dump(to_cache, f, ensure_ascii=False)
             except Exception as ce:
                 print(f"Metadata cache failed: {ce}")
 
@@ -747,10 +754,15 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
                 if passport_path and os.path.exists(passport_path):
                     try:
                         with open(passport_path, 'r', encoding='utf-8') as f:
-                            info = json.load(f)
+                            passport_content = json.load(f)
+                            if isinstance(passport_content, dict):
+                                if "raw_info" in passport_content:
+                                    info = passport_content["raw_info"]
+                                elif passport_content.get("extractor") or passport_content.get("formats"):
+                                    info = passport_content
                     except: pass
 
-                if info:
+                if info and (info.get("formats") or info.get("url")):
                     try:
                         ydl.process_info(info)
                     except Exception as pe:
@@ -769,7 +781,6 @@ def download_video(url, output_dir, callback=None, is_audio_only=False, quality=
                     if os.path.exists(candidate):
                         filename = candidate
                         break
-                            break
 
                 return {
                     "status": "success",
