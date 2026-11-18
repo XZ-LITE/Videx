@@ -96,13 +96,17 @@ fun VideoDownloaderTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !isDark
-            insetsController.isAppearanceLightNavigationBars = !isDark
-            WindowCompat.setDecorFitsSystemWindows(window, false)
+            val activity = (view.context as? Activity)
+                ?: ((view.context as? android.content.ContextWrapper)?.baseContext as? Activity)
+            if (activity != null) {
+                val window = activity.window
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = !isDark
+                insetsController.isAppearanceLightNavigationBars = !isDark
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+            }
         }
     }
 
